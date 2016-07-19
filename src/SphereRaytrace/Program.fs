@@ -54,7 +54,7 @@ let myIllum = illum kBackground kColor kAmbient kLightPos kSphereRad
 
 let rnd = Random()
 
-let dither (strength) (brightness) =
+let dither strength brightness =
     brightness + float32 (rnd.NextDouble()) * strength - strength * 0.5f
 
 let toPixelValue brightness =
