@@ -59,9 +59,9 @@ let toColorSpace (brightness:float32<Intensity>) : float32<Color> = brightness *
 
 let rnd = Random()
 
-let ditherRandom (strength) (brightness:float32<Color>) =
+let ditherRandom (brightness:float32<Color>) =
     let diff = rnd.NextDouble() - 0.5 |> float32
-    brightness + diff * strength * 1.f<Color>
+    brightness + diff * 1.f<Color>
 
 let quantisize brightness =
     brightness * 1.f<1/Color> + 0.5f
@@ -86,7 +86,7 @@ let main argv =
             let pv =
                 myIllum (float32 x - kSphereRad + 0.5f) (float32 y - kSphereRad + 0.5f)
                 |> toColorSpace
-                |> ditherRandom 1.f
+                |> ditherRandom
                 |> quantisize
             buffer.[ i ] <- pv
             buffer.[ i + 1 ] <- pv
