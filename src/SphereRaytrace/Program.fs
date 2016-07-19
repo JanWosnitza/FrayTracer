@@ -6,8 +6,11 @@ open System.Drawing.Imaging
 open System.Runtime.InteropServices
 open System.Diagnostics
 
-[<Measure>] type Intensity
-[<Measure>] type Color
+[<Measure>] type intensity
+[<Measure>] type colorspace
+
+type Intensity = float32<intensity>
+type ColorSpace = float32<colorspace>
 
 type Vector = {
     X:single; Y:single; Z:single
@@ -34,7 +37,7 @@ let pointOnSphere r x y =
         Some(z, -z)
     else None
 
-let illum (background:float32<Intensity>) color (ambient:float32<Intensity>) lightpos (lightcolor:float32<Intensity>) r x y =
+let illum (background:Intensity) color (ambient:Intensity) lightpos (lightcolor:Intensity) r x y =
     let lighting z1 z2 =
         let v1 = { X = x; Y = y; Z = z1 }
         let v2 = { X = x; Y = y; Z = z2 }
@@ -48,23 +51,23 @@ let illum (background:float32<Intensity>) color (ambient:float32<Intensity>) lig
 
 let kSphereRad = 512.0f
 let kLightPos = { X = 2048.0f; Y = -2048.0f; Z = -2048.0f }
-let kAmbient = 1.f<Intensity>
-let kBackground = 0.1f<Intensity>
-let kLightColor = 10.f<Intensity>
-let kColor = 1.0f<Intensity> / (kLightColor + kAmbient)
+let kAmbient = 1.f<intensity>
+let kBackground = 0.1f<intensity>
+let kLightColor = 10.f<intensity>
+let kColor = 1.0f<intensity> / (kLightColor + kAmbient)
 
 let myIllum = illum kBackground kColor kAmbient kLightPos kLightColor kSphereRad
 
-let toColorSpace (brightness:float32<Intensity>) : float32<Color> = brightness * 256.f<_>
+let toColorSpace (brightness:Intensity) : ColorSpace = brightness * 256.f<_>
 
 let rnd = Random()
 
-let ditherRandom (brightness:float32<Color>) =
+let ditherRandom (brightness:ColorSpace) =
     let diff = rnd.NextDouble() - 0.5 |> float32
-    brightness + diff * 1.f<Color>
+    brightness + diff * 1.f<colorspace>
 
 let quantize brightness =
-    brightness * 1.f<1/Color> + 0.5f
+    brightness * 1.f<1/colorspace> + 0.5f
     |> max 0.f |> min 255.f |> byte
 
 let saveJpeg (buffer:byte[], width, height) (filename:string, format) =
