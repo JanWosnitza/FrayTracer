@@ -4,7 +4,7 @@ A F# ray tracer.
 Are you ready for the fray tracer?
 
 # Ideas/Goals
-* A Ray has an intensity and a wave-length (eg. optical dispersion, red-shift)
+* A ray-test consists of a start-position, a direction and a wave-length and produces an intensity (eg. optical dispersion, red-shift)
 * Immutable scenes (eg. composable, thread-safe)
 * Extensible
   * Materials (eg. wood, glass, cloud)
