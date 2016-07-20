@@ -76,6 +76,8 @@ let saveJpeg (buffer:byte[], width, height) (filename:string, format) =
         finally scan0.Free()
     bm.Save(filename, format)
 
+let toByte = ditherRandom >> quantize
+
 [<EntryPoint>]
 let main argv =
     let stopwatch = Stopwatch.StartNew()
@@ -88,11 +90,9 @@ let main argv =
             let pv =
                 myIllum (float32 x - kSphereRad + 0.5f) (float32 y - kSphereRad + 0.5f)
                 |> toColorSpace
-                |> ditherRandom
-                |> quantize
-            buffer.[ i ] <- pv
-            buffer.[ i + 1 ] <- pv
-            buffer.[ i + 2 ] <- pv
+            buffer.[ i ] <- toByte pv
+            buffer.[ i + 1 ] <- toByte pv
+            buffer.[ i + 2 ] <- toByte pv
             i <- i + 3
 
     stopwatch.Stop()
