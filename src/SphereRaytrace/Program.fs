@@ -37,7 +37,7 @@ let pointOnSphere r x y =
         Some(z, -z)
     else None
 
-let illum (background:Intensity) color (ambient:Intensity) lightpos (lightcolor:Intensity) r x y =
+let illum color (ambient:Intensity) lightpos (lightcolor:Intensity) r x y =
     let lighting z1 z2 =
         let v1 = { X = x; Y = y; Z = z1 }
         let v2 = { X = x; Y = y; Z = z2 }
@@ -47,16 +47,15 @@ let illum (background:Intensity) color (ambient:Intensity) lightpos (lightcolor:
         (lit * lightcolor + ambient) * color
     match pointOnSphere r x y with
     | Some(posz, negz) -> lighting posz negz
-    | None -> background
+    | None -> ambient
 
 let kSphereRad = 512.0f
 let kLightPos = { X = 2048.0f; Y = -2048.0f; Z = -2048.0f }
-let kAmbient = 1.f<intensity>
-let kBackground = 0.1f<intensity>
-let kLightColor = 10.f<intensity>
+let kAmbient = 0.2f<intensity>
+let kLightColor = 1.f<intensity>
 let kColor = 1.0f<intensity> / (kLightColor + kAmbient)
 
-let myIllum = illum kBackground kColor kAmbient kLightPos kLightColor kSphereRad
+let myIllum = illum kColor kAmbient kLightPos kLightColor kSphereRad
 
 let toColorSpace (brightness:Intensity) : ColorSpace = brightness * 256.f<_>
 
