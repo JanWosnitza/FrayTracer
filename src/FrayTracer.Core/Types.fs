@@ -29,4 +29,12 @@ type Volume =
     Test : Ray -> (Vector3 * Vector3) option
     }
 
+[<Measure>] type degC
+type Camera =
+    {
+    Position : Vector3
+    LookAt : Vector3
+    Up  : Vector3
+    Fov : float<degC> 
+    }
 // Ray -> Volumetest -> hits Surface -> hits Material
