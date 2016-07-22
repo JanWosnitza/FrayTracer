@@ -1,0 +1,3 @@
+[submodule "modules/ArcManagedFBX"]
+	path = modules/ArcManagedFBX
+	url = https://github.com/gileoo/ArcManagedFBX.git
