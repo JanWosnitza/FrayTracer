@@ -55,11 +55,21 @@ let kAmbient = 0.2f<intensity>
 let kLightColor = 1.f<intensity>
 let kColor = 1.0f<intensity> / (kLightColor + kAmbient)
 
-let myIllum = illum kColor kAmbient kLightPos kLightColor kSphereRad
+let myIllum (x) (y) =
+    illum kColor kAmbient kLightPos kLightColor kSphereRad
+          (float32 x - kSphereRad) (float32 y - kSphereRad)
 
 let toColorSpace (brightness:Intensity) : ColorSpace = brightness * 256.f<_>
 
 let rnd = Random()
+
+let ditherPosition (samples) (f:_->_->Intensity) (x) (y) =
+    let mutable sum = 0.0f<intensity>
+    for _ in 1 .. samples do
+        let v = f (x + float32 (rnd.NextDouble())) 
+                  (y + float32 (rnd.NextDouble()))
+        sum <- sum + v
+    sum / float32 samples
 
 let ditherRandom (brightness:ColorSpace) =
     let diff = rnd.NextDouble() - 0.5 |> float32
@@ -78,9 +88,12 @@ let saveJpeg (buffer:byte[], width, height) (filename:string, format) =
 
 let toByte = ditherRandom >> quantize
 
+
 [<EntryPoint>]
 let main argv =
     let stopwatch = Stopwatch.StartNew()
+    let updateInterval = TimeSpan.FromSeconds( 0.1 )
+    let mutable nextUpdate = updateInterval
     
     let l = int (2.0f * kSphereRad)
     let buffer = Array.zeroCreate (l*l*9)
@@ -88,15 +101,24 @@ let main argv =
     for y = 0 to l - 1 do
         for x = 0 to l - 1 do
             let pv =
-                myIllum (float32 x - kSphereRad + 0.5f) (float32 y - kSphereRad + 0.5f)
+                ditherPosition 100 myIllum (float32 x) (float32 y)
                 |> toColorSpace
-            buffer.[ i ] <- toByte pv
+            buffer.[ i + 0 ] <- toByte pv
             buffer.[ i + 1 ] <- toByte pv
             buffer.[ i + 2 ] <- toByte pv
             i <- i + 3
 
+            let elapsed = stopwatch.Elapsed
+            if elapsed >= nextUpdate then
+                let percentage = float (y * l + x) / float (l*l)
+                let remainingTime = elapsed.TotalSeconds * ( 1.0 / percentage - 1.0) |> TimeSpan.FromSeconds
+                printf "\r%5.1f%% - %O" (percentage * 100.0) remainingTime
+                nextUpdate <- nextUpdate + updateInterval
+
+    printf "\r"
+
     stopwatch.Stop()
-    printf "total time: %O\n" stopwatch.Elapsed
+    printfn "total time: %O\n" stopwatch.Elapsed
 
     let file = "output.bmp"
     saveJpeg (buffer, l, l) (file, ImageFormat.Bmp)
