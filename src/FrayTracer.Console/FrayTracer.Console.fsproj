@@ -51,6 +51,13 @@
     <Compile Include="Program.fs" />
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FrayTracer.Core\FrayTracer.Core.fsproj">
+      <Name>FrayTracer.Core</Name>
+      <Project>{595fae11-d808-42df-891e-ef716a73bff8}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
