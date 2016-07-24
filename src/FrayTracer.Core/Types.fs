@@ -4,45 +4,38 @@ open System.Numerics
 open FSharp.Data.UnitSystems.SI.UnitSymbols
 
 [<StructuredFormatDisplay( "{StructuredFormatDisplay}" )>]
-type Material =
-    {
+type Material = {
     Name : string
     RefractionIndex : float32
-    Reflectance : float<Hz> -> float32
-    }
+    Color : Vector3 * float<Hz> -> float32
+    Glow : Vector3 * float<Hz> -> float32
+} with
 
     override this.ToString() = this.Name
     member private this.StructuredFormatDisplay = this.ToString()
 
-type HitType =
-    | Enter
-    | Leave
-
-type RayHit =
-    {
-    Distance : float32
+type RayHit = {
+    Distance : float32<m>
     Normal : Vector3
     Material : Material
-    }
+}
 
-type Ray =
-    {
+type Ray = {
     Position : Vector3
     Direction : Vector3
     Frequency : float<Hz>
-    Time : float<s>
+    Time : float32<s>
     Coeff : float32
-    }
+    Intensity : float32
+}
 
 type Volume = Ray -> RayHit option
 type Surface = RayHit -> RayHit
 
 [<Measure>] type degC
-type Camera =
-    {
+type Camera = {
     Position : Vector3
     LookAt : Vector3
     Up  : Vector3
     Fov : float<degC> 
-    }
-// Ray -> Volumetest -> hits Surface -> hits Material
+}
