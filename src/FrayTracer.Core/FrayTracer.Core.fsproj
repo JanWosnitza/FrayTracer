@@ -44,6 +44,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Space.fs" />
+    <Compile Include="BasicTypes.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="Light.fs" />
     <Compile Include="LightFilter.fs" />

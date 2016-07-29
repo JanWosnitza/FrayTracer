@@ -25,7 +25,7 @@ module Colors =
     let orange = rangeTHz 484 508
     let red    = rangeTHz 400 484
 
-type Fresnel = {Reflectance:float32; Reflect:Vector3; Transmitance:float32; Transmit:Vector3}
+type Fresnel = {Reflectance:float32; Reflect:Lazy<Vector3>; Transmitance:float32; Transmit:Lazy<Vector3>}
 
 let fresnel (n1) (n2) (normal) (direction) =
     // https://en.wikipedia.org/wiki/Fresnel_equations
@@ -35,8 +35,8 @@ let fresnel (n1) (n2) (normal) (direction) =
     
     let n1n2 = n1 / n2
     let cosi = Vector3.Dot( normal, direction )
-    let sint = n1n2 * (1.f - cosi * cosi) |> sqrt
-    let cost = 1.f - sint * sint |> sqrt
+    let n1n2cosi = n1n2 * cosi
+    let cost = sqrt (1.f + n1n2cosi * cosi - n1n2)
 
     let rs =
         let a = n2 * cosi
@@ -53,9 +53,9 @@ let fresnel (n1) (n2) (normal) (direction) =
     let reflectance = 0.5f * (rs + rp)
     {
     Reflectance = reflectance
-    Reflect = direction - 2.f * Vector3.Dot( normal, direction ) * normal
+    Reflect = lazy (direction - 2.f * cosi * normal)
     Transmitance = 1.f - reflectance
-    Transmit = n1n2 * direction + (n1n2 * cosi - cost) * normal
+    Transmit = lazy (n1n2 * direction + (n1n2cosi - cost) * normal)
     }
 
 // TODO Schlick’s approximation

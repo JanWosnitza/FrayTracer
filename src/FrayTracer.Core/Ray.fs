@@ -4,16 +4,17 @@ module FrayTracer.Core.Ray
 open System.Numerics
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
+(*
 let start (frequency) (position) (direction) =
     {
-    Ray.Position = position
+    LightRay.Position = position
     Direction = direction
     Frequency = frequency
     Time = 0.f<s>
     Coeff = 1.0f
     Intensity = 0.f
     }
-    
+*)    
 
 (*let reflect (hit:RayHit) (ray:Ray) =
     let position = ray.Position + ray.Direction * float32 (hit.Distance - 0.001f<m>)

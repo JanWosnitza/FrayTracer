@@ -6,7 +6,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // Reflection
 // Refraction
 // Diffuse = dot( normal, direction )
-
+(*
 let ray = 
     Ray.start
         10000.0<Hz>
@@ -21,9 +21,9 @@ let background (glow) =
         Glow = glow
     }
 
-    let test (ray:Ray) =
+    let test (ray:LightRay) =
         {
-        RayHit.Distance = Single.MaxValue * 1.f<_>
+        LightRayHit.Distance = Single.MaxValue * 1.f<_>
         Material = material
         Normal = Vector3.UnitX
         } |> Some
@@ -34,7 +34,7 @@ let ball (position) (radius) (material) =
     let radius2 = radius * radius
     // center at (0, 0, 0)
 
-    let test (ray:Ray) =
+    let test (ray:LightRay) =
         let pos = ray.Position - position
         let dir = ray.Direction
         let distanceNearest = -Vector3.Dot( pos, dir )
@@ -53,7 +53,7 @@ let ball (position) (radius) (material) =
                     else distanceNearest + s
 
                 {
-                RayHit.Distance = distance * 1.f<_>
+                LightRayHit.Distance = distance * 1.f<_>
                 Normal = Vector3.Normalize( pos + dir * distance )
                 Material = material
                 } |> Some
@@ -102,3 +102,4 @@ let myBackground = background (fun _ -> 10.f)
 
 trace (glassBall ++ myBackground) ray
 |> printfn "%A"
+*)
