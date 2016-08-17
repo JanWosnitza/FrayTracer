@@ -53,6 +53,8 @@
     <Compile Include="Material.fs" />
     <Compile Include="Volume.fs" />
     <None Include="Script.fsx" />
+    <Compile Include="Spline.fs" />
+    <Compile Include="Noise.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

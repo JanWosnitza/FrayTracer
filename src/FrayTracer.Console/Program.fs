@@ -103,3 +103,64 @@ let myBackground = background (fun _ -> 10.f)
 trace (glassBall ++ myBackground) ray
 |> printfn "%A"
 *)
+
+(* spline and noise testing function
+// todo place somewhere systematically
+    let data = [|10.0;-10.0;10.0;-10.0|]
+
+//    let interpolated = 
+        //[|-0.1; 0.0; 0.1; 0.5; 1.0; 1.1|]
+        //[|0.5|]
+    [|0.0 .. 0.05 .. 1.0|]
+    |> Array.iter (fun x -> printfn "%A" (catmulRom1D data x))
+    
+//    printfn "interpolated: %A" interpolated 
+
+    // output some noise
+    printfn "Noise.value:"
+    let mutable valueTime = TimeSpan.Zero
+    [| 0.0 .. 0.1 .. 16.0|]
+    |> Array.iter( fun x -> 
+        let stopWatch = Stopwatch.StartNew()
+        let value = Noise.value x 0.0 0.0
+        valueTime <- valueTime + stopWatch.Elapsed 
+        printfn "%A" value )  
+
+    let mutable gradientTime = TimeSpan.Zero
+    printfn "Noise.gradient:"
+    [| 0.0 .. 0.1 .. 16.0|]
+    |> Array.iter( fun x -> 
+        let stopWatch = Stopwatch.StartNew()
+        let gradient = Noise.gradient x 0.0 0.0
+        gradientTime <- gradientTime + stopWatch.Elapsed
+        printfn "%A"  gradient )  
+
+    printfn "Time value:    %A" valueTime
+    printfn "Time gradient: %A" gradientTime
+    printfn "Speedup grad.: %A" (valueTime.TotalMilliseconds / gradientTime.TotalMilliseconds)
+
+    
+
+    // check permutation table entries
+    let stopWatch = Stopwatch.StartNew()
+    let set:Set<int> = Set.empty
+    let mutable bet = set
+
+    Noise.permutationTable
+    |> Array.iter( fun i -> 
+        bet <- bet.Add i  )
+
+    let checkTime = stopWatch.Elapsed
+
+    printfn "elems in set: %A" bet.Count
+    printfn "min elem in set: %A" bet.MinimumElement
+    printfn "max elem in set: %A" bet.MaximumElement
+    printfn "tested in: %A" checkTime
+
+    if bet.Count = 256 && bet.MaximumElement = 255 && bet.MinimumElement = 0 then 
+        printfn "success"
+    else 
+        printfn "fail"
+
+    0
+*)
