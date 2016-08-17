@@ -12,7 +12,7 @@ module Spline =
 
     let catmulRom1D (knots:array<float>) (x01)=
         let nSpans = knots.Length - 3
-        if nSpans < 1 then failwith "cSpline not enough knots!"
+        if nSpans < 1 then failwith "catmulRom1D not enough knots!"
         let xClamped = clamp01 x01 * float nSpans
         let span = 
             if   int xClamped >= nSpans then nSpans
