@@ -1,13 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2042
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FrayTracer.Console", "FrayTracer.Console\FrayTracer.Console.fsproj", "{57FD9E3E-51E9-4D96-BD34-6D6635EA8335}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FrayTracer.Core", "FrayTracer.Core\FrayTracer.Core.fsproj", "{595FAE11-D808-42DF-891E-EF716A73BFF8}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{65157F2D-E444-430B-89D4-0966F5D8D434}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FrayTracer", "FrayTracer\FrayTracer.fsproj", "{4FB69743-6122-4BEB-AFC6-B3F801A80B1A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,11 +23,15 @@ Global
 		{595FAE11-D808-42DF-891E-EF716A73BFF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{595FAE11-D808-42DF-891E-EF716A73BFF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{595FAE11-D808-42DF-891E-EF716A73BFF8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4FB69743-6122-4BEB-AFC6-B3F801A80B1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4FB69743-6122-4BEB-AFC6-B3F801A80B1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4FB69743-6122-4BEB-AFC6-B3F801A80B1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4FB69743-6122-4BEB-AFC6-B3F801A80B1A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{57FD9E3E-51E9-4D96-BD34-6D6635EA8335} = {65157F2D-E444-430B-89D4-0966F5D8D434}
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E28CEDC6-4904-4C76-BC57-1908B90C4F8A}
 	EndGlobalSection
 EndGlobal

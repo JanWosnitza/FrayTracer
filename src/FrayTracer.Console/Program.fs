@@ -1,166 +1,141 @@
-﻿open System
-open FrayTracer.Core
+﻿module Program
+
+open System
 open System.Numerics
-open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
+open FrayTracer.Core
+open System.Reflection
+open System.Runtime.InteropServices
+open System.Drawing
+open System.Drawing.Imaging
 
-// Reflection
-// Refraction
-// Diffuse = dot( normal, direction )
-(*
-let ray = 
-    Ray.start
-        10000.0<Hz>
-        (Vector3( -10.f, 0.1f, 0.f ))
-        (Vector3( 1.f, 0.f, 0.f ))
+let (++) (s1) (s2) = Scene.combine s1 s2
 
-let background (glow) =
-    let material = {
-        Material.Name = "Background"
-        Color = (fun _ -> 0.f)
-        RefractionIndex = 1.f
-        Glow = glow
+type Camera =
+    {
+    Position : Vector3
+    Direction : Vector3
+    Up : Vector3
+    Fov : float32
+    Near : float32
     }
 
-    let test (ray:LightRay) =
-        {
-        LightRayHit.Distance = Single.MaxValue * 1.f<_>
-        Material = material
-        Normal = Vector3.UnitX
-        } |> Some
+type ImageSize =
+    {
+    SizeX : int
+    SizeY : int
+    }
+
+let getUniformPixelPos (size:ImageSize) (x, y) =
+    let ux = (float32 x + Random.uniform_01 ()) / float32 size.SizeX - 0.5f
+    let uy = (float32 y + Random.uniform_01 ()) / float32 size.SizeY - 0.5f
+
+    (ux, uy)
+
+let uniformPixelToRay (camera:Camera) (x, y) : Ray =
+    {
+    Position = vector3 0.0f 0.0f 0.0f
+    Direction = vector3 0.0f 0.0f 0.0f
+    }
+
+let toRays (scene) (camera) (imageSize) (x, y) =
+    let trace () = 
+        (x, y)
+        |> getUniformPixelPos imageSize
+        |> uniformPixelToRay camera
+        |> Scene.trace scene
+        
+    Seq.initInfinite ignore
+    |> Seq.map trace
+
+let tracesPerPixel = 10
+
+module Array2D =
+    let toSeqIndexed (array:_[,]) =
+        seq {
+        for i = 0 to array.GetLength(0) do
+            for j = 0 to array.GetLength(1) do
+                yield (i, j), array.[i, j]
+        }
+
+    let toSeq (array:_[,]) =
+        seq {
+        for i = 0 to array.GetLength(0) do
+            for j = 0 to array.GetLength(1) do
+                yield array.[i, j]
+        }
+
+    let max (array:_[,]) =
+        array
+        |> toSeq
+        |> Seq.max
+
+module Image =
+    let traceImage (imageSize:ImageSize) (pixelToIntensities) =
+        Array2D.init imageSize.SizeX imageSize.SizeX
+            (fun x y ->
+            pixelToIntensities imageSize (x, y) :> float32 seq
+            |> Seq.take tracesPerPixel
+            |> Seq.average
+            )            
+
+    let normalize (image:float32[,]) =
+        let max = Array2D.max image
+        image
+        |> Array2D.map (fun x -> x / max)
     
-    test
+    let gamma (gamma:float32) (image:float32[,]) =
+        image
+        |> Array2D.map (fun x -> x ** gamma)
 
-let ball (position) (radius) (material) =
-    let radius2 = radius * radius
-    // center at (0, 0, 0)
+    let dither (max:float32) (image:float32[,]) =
+        let half = max * 0.5f
+        image
+        |> Array2D.map (fun x -> x + Random.uniform -half half)
 
-    let test (ray:LightRay) =
-        let pos = ray.Position - position
-        let dir = ray.Direction
-        let distanceNearest = -Vector3.Dot( pos, dir )
-        if distanceNearest <= 0.0001f then
-            None
-        else
-            let nearest = pos + dir * distanceNearest
-            let length2 = nearest.LengthSquared()
-            if length2 >= radius2 then
-                None
-            else
-                let distance =
-                    let s = sqrt (radius2 - length2)
-                    let c = distanceNearest - s
-                    if c >= 0.f then c
-                    else distanceNearest + s
+    let saveBitmap (path:string) (image:float32[,]) =
+        use bm =
+            let scan0 = GCHandle.Alloc(image, GCHandleType.Pinned)
+            try
+                new Bitmap(
+                    image.GetLength(0),
+                    image.GetLength(1),
+                    image.GetLength(1)*3,
+                    PixelFormat.Format24bppRgb,
+                    scan0.AddrOfPinnedObject()
+                )
+            finally scan0.Free()
+        bm.Save(path + ".bmp", ImageFormat.Bmp)
+        
 
-                {
-                LightRayHit.Distance = distance * 1.f<_>
-                Normal = Vector3.Normalize( pos + dir * distance )
-                Material = material
-                } |> Some
+////////////////////////////////
+// MAIN
+ 
+let scene =
+    Scene.ambient 0.2f
+    ++ Scene.sphere
+        (vector3 0.0f 0.0f 0.0f, 1.0f)
+        (Material.surface 0.5f)
+    ++ Scene.sphere
+        (vector3 2.0f 0.0f 0.0f, 1.0f)
+        (Material.light 2.0f)
+ 
+let camera =
+    {
+    Position = vector3 0.0f -2.0f 0.0f
+    Direction = vector3 0.0f 1.0f 0.0f
+    Up = vector3 0.0f 0.0f 1.0f
+    Fov = 90.0f * Math.degToRad
+    Near = 0.1f
+    }
 
-    test
+let imageSize =
+    {
+    SizeX = 500
+    SizeY = 500
+    }
 
-let glassBall = ball Vector3.Zero 1.f Material.glass
-
-//glassBall ray
-//|> printfn "%A"
-
-let (++) (v1:Volume) (v2:Volume) (ray) =
-    let r1 = v1 ray
-    let r2 = v2 ray
-    match (r1, r2) with
-    | (None, None) -> None
-    | (Some _, None) -> r1
-    | (None, Some _) -> r2
-    | (Some r1', Some r2') ->
-        if r1'.Distance < r2'.Distance then
-            r1
-        else r2
-
-let trace (volume:Volume) (ray) =
-    let rec loop (ray) =
-        printfn "##### Step #####\n%A" ray
-        if ray.Coeff < 0.001f then
-            ray.Intensity
-        else
-            match volume ray with
-            | Some hit ->
-                printfn "\n%A" hit
-                printfn ""
-                let fres = Light.fresnel (1.f) (hit.Material.RefractionIndex) (hit.Normal) (ray.Direction)
-                {ray with
-                    Position = ray.Position + ray.Direction * float32 hit.Distance
-                    Direction = fres.Reflect
-                    Coeff = ray.Coeff * fres.Reflectance
-                }
-                |> loop
-            | None -> ray.Intensity
-
-    loop ray
-
-let myBackground = background (fun _ -> 10.f)
-
-trace (glassBall ++ myBackground) ray
-|> printfn "%A"
-*)
-
-(* spline and noise testing function
-// todo place somewhere systematically
-    let data = [|10.0;-10.0;10.0;-10.0|]
-
-//    let interpolated = 
-        //[|-0.1; 0.0; 0.1; 0.5; 1.0; 1.1|]
-        //[|0.5|]
-    [|0.0 .. 0.05 .. 1.0|]
-    |> Array.iter (fun x -> printfn "%A" (catmulRom1D data x))
-    
-//    printfn "interpolated: %A" interpolated 
-
-    // output some noise
-    printfn "Noise.value:"
-    let mutable valueTime = TimeSpan.Zero
-    [| 0.0 .. 0.1 .. 16.0|]
-    |> Array.iter( fun x -> 
-        let stopWatch = Stopwatch.StartNew()
-        let value = Noise.value x 0.0 0.0
-        valueTime <- valueTime + stopWatch.Elapsed 
-        printfn "%A" value )  
-
-    let mutable gradientTime = TimeSpan.Zero
-    printfn "Noise.gradient:"
-    [| 0.0 .. 0.1 .. 16.0|]
-    |> Array.iter( fun x -> 
-        let stopWatch = Stopwatch.StartNew()
-        let gradient = Noise.gradient x 0.0 0.0
-        gradientTime <- gradientTime + stopWatch.Elapsed
-        printfn "%A"  gradient )  
-
-    printfn "Time value:    %A" valueTime
-    printfn "Time gradient: %A" gradientTime
-    printfn "Speedup grad.: %A" (valueTime.TotalMilliseconds / gradientTime.TotalMilliseconds)
-
-    
-
-    // check permutation table entries
-    let stopWatch = Stopwatch.StartNew()
-    let set:Set<int> = Set.empty
-    let mutable bet = set
-
-    Noise.permutationTable
-    |> Array.iter( fun i -> 
-        bet <- bet.Add i  )
-
-    let checkTime = stopWatch.Elapsed
-
-    printfn "elems in set: %A" bet.Count
-    printfn "min elem in set: %A" bet.MinimumElement
-    printfn "max elem in set: %A" bet.MaximumElement
-    printfn "tested in: %A" checkTime
-
-    if bet.Count = 256 && bet.MaximumElement = 255 && bet.MinimumElement = 0 then 
-        printfn "success"
-    else 
-        printfn "fail"
-
-    0
-*)
+let image =
+    Image.traceImage imageSize (toRays scene camera)
+    |> Image.normalize
+    |> Image.gamma 2.2f
+    |> Image.saveBitmap "test"
