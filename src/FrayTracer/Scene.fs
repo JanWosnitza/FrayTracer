@@ -4,6 +4,8 @@ module FrayTracer.Core.Scene
 open System
 open System.Numerics
 
+let empty : Scene = fun (ray) -> None
+
 let combine (s1:Scene) (s2:Scene) : Scene =
     fun (ray) ->
     match s1 ray, s2 ray with
@@ -11,6 +13,11 @@ let combine (s1:Scene) (s2:Scene) : Scene =
     | Some r1, None -> Some r1
     | None, Some r2 -> Some r2
     | None, None -> None
+
+let collect (xs:#seq<#seq<Scene>>) =
+    xs
+    |> Seq.collect id
+    |> Seq.fold combine empty
 
 let ambient (intensity) : Scene =
     let material = Material.light intensity
@@ -22,21 +29,25 @@ let ambient (intensity) : Scene =
     Material = material
     }
 
-let sphere (position:Vector3, radius:float32) (material) : Scene =
+let sphere (position:Vector3) (radius:float32) (material) : Scene =
     fun (ray) ->
-    let p = (ray.Position - position) / radius
+    let p = (position - ray.Position) / radius
     let lenNearest = Vector3.Dot(p, ray.Direction)
-    let pNearest = p + ray.Direction * lenNearest
-    let lenBoundary = sqrt (1.0f - pNearest.LengthSquared())
-    if lenNearest < lenBoundary then
+    let pNearest = p - ray.Direction * lenNearest
+    let lenNearestSquared = pNearest.LengthSquared()
+    if lenNearestSquared > 1.0f then
         None
     else
-        let pBoundary = pNearest - ray.Direction * lenBoundary
-        Some {
-        Length = (lenNearest - lenBoundary) * radius
-        Normal = pBoundary
-        Material = material
-        }
+        let lenBoundary = sqrt (1.0f - lenNearestSquared)
+        if lenNearest < lenBoundary then
+            None
+        else
+            let pBoundary = pNearest + ray.Direction * lenBoundary
+            Some {
+            Length = (lenNearest - lenBoundary) * radius
+            Normal = Vector3.normalize pBoundary
+            Material = material
+            }
 
 let trace (scene:Scene) (ray:Ray) : float32 =
     let rec loop (intensity) (intensityCoeff) (ray) =

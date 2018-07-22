@@ -22,6 +22,8 @@ module Vector3 =
 
     let inline cross (v1) (v2) = Vector3.Cross(v1, v2)
 
+    let inline normalize (v) = Vector3.Normalize(v)
+
 let inline vector3 (x) (y) (z) = Vector3.create x y z
 
 [<RequireQualifiedAccess>]
@@ -30,7 +32,7 @@ module Random =
 
     let uniform_01 () = rnd.NextDouble() |> float32
 
-    let uniform_11 () = 1.0f + uniform_01 () * 2.0f
+    let uniform_11 () = -1.0f + uniform_01 () * 2.0f
 
     let uniform (min) (max) = min + uniform_01 () * (max - min)
 
