@@ -5,7 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>4fb69743-6122-4beb-afc6-b3f801a80b1a</ProjectGuid>
+    <ProjectGuid>eeb946d4-49cc-49de-bf5b-b0d28939edf5</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>FrayTracer</RootNamespace>
     <AssemblyName>FrayTracer</AssemblyName>
@@ -52,6 +52,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Content Include="packages.config" />
     <Compile Include="Helpers.fs" />
     <Compile Include="Workflow.fs" />
     <Compile Include="Material.fs" />
@@ -67,6 +68,10 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
+    <Reference Include="System.ValueTuple">
+      <HintPath>..\packages\System.ValueTuple.4.4.0\lib\net461\System.ValueTuple.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
