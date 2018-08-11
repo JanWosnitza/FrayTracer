@@ -12,15 +12,46 @@ open System.Diagnostics
 
 let (++) (s1) (s2) = Scene.combine s1 s2
 
+type Lens =
+    {
+    NearPlaneSize : float32
+    }
+
+module Lens =
+    let create (fieldOfView) =
+        {
+        NearPlaneSize = sin (fieldOfView * 0.5f)
+        }
+
 type Camera =
     {
     Position : Vector3
     Forward : Vector3
     Up : Vector3
     Right : Vector3
-    NearPlaneDistance : float32
-    NearPlaneSize : float32
+    Lens : Lens
     }
+
+type LookAtCamera =
+    {
+    Position : Vector3
+    LookAt : Vector3
+    Up : Vector3
+    Lens : Lens
+    }
+
+module Camera =
+    let ofLookAt {Position=position; LookAt=lookAt; Up=up; Lens=lens} =
+        let forward = (lookAt - position) |> Vector3.normalize
+        let right = Vector3.cross forward up |> Vector3.normalize
+        
+        {
+        Position = position
+        Forward = forward
+        Up = Vector3.cross forward right
+        Right = right
+        Lens = lens
+        }
 
 type ImageSize =
     {
@@ -37,11 +68,11 @@ let getUniformPixelPos (size:ImageSize) (x, y) =
     (ux, uy)
 
 let uniformPixelToRay (camera:Camera) (x, y) : Ray =
-    let v : Vector3 = (x * camera.Right + y * camera.Up)
-    let dir = camera.Forward * camera.NearPlaneDistance + v * camera.NearPlaneSize
     {
-    Position = camera.Position + dir
-    Direction = dir |> Vector3.normalize
+    Position = camera.Position
+    Direction =
+        camera.Forward + ((x * camera.Right + y * camera.Up) |> Vector3.scale camera.Lens.NearPlaneSize)
+        |> Vector3.normalize
     }
 
 let toRays (scene) (camera) (imageSize) (x, y) =
@@ -128,13 +159,11 @@ let shellOpen (path) =
 // MAIN
  
 let camera =
-    {
-    Position = vector3 0.0f -4.0f 0.0f
-    Forward = vector3 0.0f 1.0f 0.0f
-    Up = vector3 0.0f 0.0f 1.0f
-    Right = vector3 1.0f 0.0f 0.0f
-    NearPlaneDistance = 0.1f
-    NearPlaneSize = sin (60.0f * Math.degToRad * 0.5f)
+    Camera.ofLookAt {
+        Position = vector3 0.0f -10.0f 0.0f
+        LookAt = vector3 0.0f 0.0f 0.0f
+        Up = vector3 0.0f 0.0f 1.0f
+        Lens = Lens.create 60.0f
     }
 
 let tracesPerPixel = 4

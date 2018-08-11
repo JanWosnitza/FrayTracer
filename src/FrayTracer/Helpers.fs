@@ -24,6 +24,8 @@ module Vector3 =
 
     let inline normalize (v) = Vector3.Normalize(v)
 
+    let inline scale (x:float32) (v:Vector3) = Vector3.Multiply(v, x)
+
 let inline vector3 (x) (y) (z) = Vector3.create x y z
 
 [<RequireQualifiedAccess>]
