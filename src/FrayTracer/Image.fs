@@ -22,10 +22,20 @@ module ImageSize =
 
 
 module Image =
-    let traceImage (imageSize:ImageSize) (tracesPerPixel) (pixelToIntensities) =
+    let traceImage (imageSize:ImageSize) (tracesPerPixel) (camera) (scene) =
+        let toRays (x, y) =
+            let trace () = 
+                (x, y)
+                |> ImageSize.getUniformPixelPos imageSize
+                |> Camera.uniformPixelToRay camera
+                |> Scene.trace scene
+        
+            Seq.initInfinite ignore
+            |> Seq.map trace
+
         Array2D.init imageSize.SizeX imageSize.SizeX
             (fun x y ->
-            pixelToIntensities imageSize (x, y) :> float32 seq
+            toRays (x, y)
             |> Seq.take tracesPerPixel
             |> Seq.average
             )            

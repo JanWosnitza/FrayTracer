@@ -2,16 +2,6 @@
 
 open FrayTracer
 open System.Diagnostics
-
-let toRays (scene) (camera) (imageSize) (x, y) =
-    let trace () = 
-        (x, y)
-        |> ImageSize.getUniformPixelPos imageSize
-        |> Camera.uniformPixelToRay camera
-        |> Scene.trace scene
-        
-    Seq.initInfinite ignore
-    |> Seq.map trace
         
 let shellOpen (path) =
     Process.Start(ProcessStartInfo(path, UseShellExecute = true ))
@@ -43,14 +33,12 @@ let randomSphere () =
         (Random.uniform 0.3f 1.0f)
         (Material.surface (Random.uniform 0.4f 0.8f))
 
-let scene =
-    [
-        List.init 30 (fun _ -> randomSphere ())
-        [Scene.ambient 0.2f]
-    ]
-    |> Scene.collect
-
-Image.traceImage imageSize tracesPerPixel (toRays scene camera)
+[
+    List.init 30 (fun _ -> randomSphere ())
+    [Scene.ambient 0.2f]
+]
+|> Scene.collect
+|> Image.traceImage imageSize tracesPerPixel camera
 |> Image.normalize
 |> Image.gamma 2.2f
 |> Image.dither (1.0f / 256.0f)
