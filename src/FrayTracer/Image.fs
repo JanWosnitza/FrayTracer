@@ -12,7 +12,7 @@ type ImageSize =
     }
 
 module ImageSize =
-    let getUniformPixelPos (size:ImageSize) (x, y) =
+    let getUniformPixelPos (size:ImageSize) (struct (x, y)) =
         let uniform (x) = float32 x + Random.uniform_01 () - 0.5f
         let maxSize = max size.SizeX size.SizeY |> float32
         let ux = (uniform x - float32 size.SizeX / 2.0f) / maxSize
@@ -20,23 +20,15 @@ module ImageSize =
 
         struct (ux, uy)
 
-
 module Image =
-    let traceImage (imageSize:ImageSize) (tracesPerPixel) (camera) (scene) =
-        let toRays (x, y) =
-            let trace () = 
-                (x, y)
-                |> ImageSize.getUniformPixelPos imageSize
-                |> Camera.uniformPixelToRay camera
-                |> Scene.trace scene
-        
-            Seq.initInfinite ignore
-            |> Seq.map trace
-
+    let trace (imageSize:ImageSize) (tracesPerPixel) (camera) (scene) =
         Array2D.Parallel.init imageSize.SizeX imageSize.SizeY
             (fun x y ->
-            toRays (x, y)
-            |> Seq.take tracesPerPixel
+            Seq.init tracesPerPixel (fun _ ->
+                struct (x, y)
+                |> ImageSize.getUniformPixelPos imageSize
+                |> Camera.uniformPixelToRay camera
+                |> Scene.trace scene)
             |> Seq.average)
 
     let normalize (image:float32[,]) =

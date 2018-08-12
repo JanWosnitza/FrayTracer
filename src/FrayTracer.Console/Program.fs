@@ -38,7 +38,7 @@ let randomSphere () =
     [Scene.ambient 0.2f]
 ]
 |> Scene.collect
-|> Image.traceImage imageSize tracesPerPixel camera
+|> Image.trace imageSize tracesPerPixel camera
 |> Image.normalize
 |> Image.gamma 2.2f
 |> Image.dither (1.0f / 256.0f)
