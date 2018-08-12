@@ -93,3 +93,8 @@ module Array2D =
         array
         |> toSeq
         |> Seq.max
+
+    module Parallel =
+        let init (length1) (length2) (f) =
+            Array.init length1 (fun x -> Array.Parallel.init length2 (f x))
+            |> ofArrayArray
