@@ -33,12 +33,14 @@ module Image =
             Seq.initInfinite ignore
             |> Seq.map trace
 
-        Array2D.init imageSize.SizeX imageSize.SizeX
-            (fun x y ->
-            toRays (x, y)
-            |> Seq.take tracesPerPixel
-            |> Seq.average
-            )            
+        Array.init imageSize.SizeX (fun x ->
+            Array.Parallel.init imageSize.SizeY (fun y ->
+                toRays (x, y)
+                |> Seq.take tracesPerPixel
+                |> Seq.average
+                )
+            )
+        |> Array2D.ofArrayArray
 
     let normalize (image:float32[,]) =
         let max = Array2D.max image

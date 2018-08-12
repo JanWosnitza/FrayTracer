@@ -76,6 +76,12 @@ module Array2D =
                 yield (i, j), array.[i, j]
         }
 
+    let ofArrayArray (array:_[][]) =
+        let xSize = Array.length array
+        let ySize = array |> Seq.map Array.length |> Seq.min
+
+        Array2D.init xSize ySize (fun x y -> array.[x].[y])
+
     let toSeq (array:_[,]) =
         seq {
         for i = 0 to array.GetLength(0) - 1 do
