@@ -55,8 +55,10 @@
     <Content Include="packages.config" />
     <Compile Include="Helpers.fs" />
     <Compile Include="Workflow.fs" />
+    <Compile Include="Camera.fs" />
     <Compile Include="Material.fs" />
     <Compile Include="Scene.fs" />
+    <Compile Include="Image.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
@@ -67,6 +69,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.ValueTuple">
       <HintPath>..\packages\System.ValueTuple.4.4.0\lib\net461\System.ValueTuple.dll</HintPath>

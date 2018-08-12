@@ -1,5 +1,5 @@
 ﻿[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module FrayTracer.Core.Material
+module FrayTracer.Material
 
 let surface (intensityCoeff) =
     {

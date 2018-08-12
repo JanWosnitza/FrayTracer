@@ -1,5 +1,5 @@
 ﻿[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module FrayTracer.Core.Scene
+module FrayTracer.Scene
 
 open System
 open System.Numerics

@@ -1,10 +1,11 @@
-﻿namespace FrayTracer.Core
+﻿namespace FrayTracer
 
 open System.Numerics
 open System
 
 type Undefined = unit
 
+[<Struct>]
 type Ray =
     {
     Position : Vector3
@@ -17,6 +18,7 @@ type Material =
     Intensity : float32
     }
 
+[<Struct>]
 type RayCastResult =
     {
     Length : float32

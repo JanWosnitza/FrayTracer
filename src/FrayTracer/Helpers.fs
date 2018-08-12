@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module FrayTracer.Core.Helpers
+module FrayTracer.Helpers
 
 open System
 open System.Numerics
@@ -67,3 +67,23 @@ module Random =
         if (0.01f <= len) && (len <= 1.0f)
             then vec / sqrt len
             else pointOnSphere ()
+
+module Array2D =
+    let toSeqIndexed (array:_[,]) =
+        seq {
+        for i = 0 to array.GetLength(0) - 1 do
+            for j = 0 to array.GetLength(1) - 1 do
+                yield (i, j), array.[i, j]
+        }
+
+    let toSeq (array:_[,]) =
+        seq {
+        for i = 0 to array.GetLength(0) - 1 do
+            for j = 0 to array.GetLength(1) - 1 do
+                yield array.[i, j]
+        }
+
+    let max (array:_[,]) =
+        array
+        |> toSeq
+        |> Seq.max
