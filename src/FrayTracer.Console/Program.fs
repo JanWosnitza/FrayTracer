@@ -37,6 +37,7 @@ let randomSphere () =
     List.init 30 (fun _ -> randomSphere ())
     [Scene.ambient 0.2f]
 ]
+|> Seq.collect id
 |> Scene.collect
 |> Image.trace imageSize tracesPerPixel camera
 |> Image.normalize

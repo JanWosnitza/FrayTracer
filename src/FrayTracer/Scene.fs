@@ -14,9 +14,8 @@ let combine (s1:Scene) (s2:Scene) : Scene =
     | None, Some r2 -> Some r2
     | None, None -> None
 
-let collect (xs:#seq<#seq<Scene>>) =
+let collect (xs:#seq<Scene>) =
     xs
-    |> Seq.collect id
     |> Seq.fold combine empty
 
 let ambient (intensity) : Scene =
