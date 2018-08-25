@@ -13,6 +13,7 @@ module Math =
     let radToDeg = 180.0f / pi
 
     let sqrt2 = sqrt 2.0f
+    let sqrt3 = sqrt 3.0f
 
 [<RequireQualifiedAccess>]
 module Vector3 =

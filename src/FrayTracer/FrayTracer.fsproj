@@ -59,6 +59,10 @@
     <Compile Include="Material.fs" />
     <Compile Include="Scene.fs" />
     <Compile Include="Image.fs" />
+    <Compile Include="Spline.fs" />
+    <Compile Include="Noise.fs" />
+    <Compile Include="Light.fs" />
+    <Compile Include="Materials.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
