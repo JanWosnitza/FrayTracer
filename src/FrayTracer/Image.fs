@@ -7,35 +7,32 @@ open System.Drawing.Imaging
 
 type ImageSize =
     {
-    SizeX : int
-    SizeY : int
+    X : int
+    Y : int
     }
 
 module ImageSize =
-    let getUniformPixelPos (size:ImageSize) (struct (x, y)) =
-        let uniform (x) = float32 x + Random.uniform_01 () - 0.5f
-        let maxSize = max size.SizeX size.SizeY |> float32
-        let ux = (uniform x - float32 size.SizeX / 2.0f) / maxSize
-        let uy = (uniform y - float32 size.SizeY / 2.0f) / maxSize
-
-        struct (ux, uy)
+    let getUniformPixelPos (size:ImageSize) (position:Vector2) =
+        let maxSize = max size.X size.Y |> float32
+        Vector2(
+            position.X / maxSize,
+            position.Y / maxSize
+        )
 
 module Image =
-    let trace (imageSize:ImageSize) (tracesPerPixel) (camera) (scene) =
-        Array2D.Parallel.init imageSize.SizeX imageSize.SizeY
-            (fun x y ->
-            Seq.init tracesPerPixel (fun _ ->
-                struct (x, y)
-                |> ImageSize.getUniformPixelPos imageSize
-                |> Camera.uniformPixelToRay camera
-                |> Scene.trace scene)
-            |> Seq.average)
+    let render (imageSize:ImageSize) (camera) (trace:Ray -> float32) =
+        Array2D.Parallel.init imageSize.X imageSize.Y 
+        <| fun x y ->
+        Vector2(float32 x, float32 y)
+        |> ImageSize.getUniformPixelPos imageSize
+        |> Camera.uniformPixelToRay camera
+        |> trace
 
     let normalize (image:float32[,]) =
         let max = Array2D.max image
         image
         |> Array2D.map (fun x -> x / max)
-    
+
     let gamma (gamma:float32) (image:float32[,]) =
         let power = 1.0f / gamma
         image
@@ -44,13 +41,13 @@ module Image =
     let dither (max:float32) (image:float32[,]) =
         let half = max * 0.5f
         image
-        |> Array2D.map (fun x -> x + Random.uniform -half half)
+        |> Array2D.map (fun x -> x + Random.uniform_11 () * half)
 
     let saveBitmap (path:string) (image:float32[,]) =
         let buffer =
             image
             |> Array2D.toSeq
-            |> Seq.map (fun x -> uint8 (x * 255.0f))
+            |> Seq.map (fun x -> x * 255.0f |> round |> uint8)
             |> Seq.collect (Seq.replicate 3)
             |> Seq.toArray
 

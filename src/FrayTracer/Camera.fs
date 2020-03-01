@@ -1,7 +1,5 @@
 ﻿namespace FrayTracer
 
-open System.Numerics
-
 type Lens =
     {
     NearPlaneSize : float32
@@ -13,9 +11,6 @@ module Lens =
         NearPlaneSize = sin (fieldOfView * 0.5f)
         }
 
-type ICamera =
-    abstract UniformPixelToRay : x:float32 * y:float32 -> Ray
-
 type Camera =
     {
     Position : Vector3
@@ -24,36 +19,32 @@ type Camera =
     RightScaled : Vector3
     }
 
-    interface ICamera with
-        member this.UniformPixelToRay(x, y) =
-            {
-            Position = this.Position
-            Direction =
-                this.Forward
-                + x * this.RightScaled
-                + y * this.UpScaled
-                |> Vector3.normalize
-            }
-
-
-type LookAtCamera =
-    {
-    Position : Vector3
-    LookAt : Vector3
-    Up : Vector3
-    Lens : Lens
-    }
-
 module Camera =
-    let ofLookAt {Position=position; LookAt=lookAt; Up=up; Lens=lens} =
-        let forward = (lookAt - position) |> Vector3.normalize
-        let right = Vector3.cross forward up |> Vector3.normalize
-        
+    type LookAt =
         {
-        Position = position
-        Forward = forward
-        UpScaled = Vector3.cross forward right * lens.NearPlaneSize
-        RightScaled = right * lens.NearPlaneSize
+            Position : Vector3
+            LookAt : Vector3
+            Up : Vector3
+            Lens : Lens
         }
 
-    let uniformPixelToRay (camera:ICamera) (struct (x, y)) = camera.UniformPixelToRay (x, y)
+    let lookAt (camera:LookAt) =
+        let forward = (camera.LookAt - camera.Position) |> Vector3.normalized
+        let right = Vector3.cross forward camera.Up |> Vector3.normalized
+        
+        {
+        Position = camera.Position
+        Forward = forward
+        UpScaled = Vector3.cross forward right * camera.Lens.NearPlaneSize
+        RightScaled = right * camera.Lens.NearPlaneSize
+        }
+
+    let uniformPixelToRay (camera:Camera) (position:Vector2) =
+        {
+        Position = camera.Position
+        Direction =
+            camera.Forward
+            + (position.X - 0.5f) * camera.RightScaled
+            + (position.Y - 0.5f) * camera.UpScaled
+            |> Vector3.normalized
+        }

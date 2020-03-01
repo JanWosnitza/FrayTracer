@@ -5,15 +5,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Helpers.fs" />
+    <Compile Include="Math.fs" />
+    <Compile Include="Random.fs" />
+    <Compile Include="Array2D.fs" />
     <Compile Include="Spline.fs" />
     <Compile Include="Workflow.fs" />
-    <Compile Include="Camera.fs" />
     <Compile Include="Light.fs" />
     <Compile Include="Material.fs" />
     <Compile Include="Materials.fs" />
     <Compile Include="Noise.fs" />
-    <Compile Include="Scene.fs" />
+    <Compile Include="SDF.fs" />
+    <Compile Include="Camera.fs" />
     <Compile Include="Image.fs" />
   </ItemGroup>
 
