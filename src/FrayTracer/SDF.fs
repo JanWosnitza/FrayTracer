@@ -82,7 +82,7 @@ module Combine =
             member this.GetDistance(position) =
                 Math.Max(
                     this.A.GetDistance(position),
-                    this.A.GetDistance(position)
+                    this.B.GetDistance(position)
                 )
 
     let intersection (a:ISignedDistanceField) (b:ISignedDistanceField) =
@@ -109,7 +109,7 @@ module Combine =
 
     let subtraction (a:ISignedDistanceField) (b:ISignedDistanceField) =
         {
-            Intersection.A = a
+            Subtraction.A = a
             B = b
         } :> ISignedDistanceField
 
