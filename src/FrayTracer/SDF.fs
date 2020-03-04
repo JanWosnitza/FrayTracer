@@ -6,6 +6,32 @@ open FrayTracer
 type ISignedDistanceField =
     abstract GetDistance : position:Vector3 -> float32
 
+module Helper =
+    let private bindingFlags =
+        Reflection.BindingFlags.Instance
+        ||| Reflection.BindingFlags.Public
+        ||| Reflection.BindingFlags.NonPublic
+
+    let construct<'Type when 'Type : struct> (parameters:obj[]) =
+        let t = typedefof<'Type>
+
+        let getCtor (t:Type) =
+            let parameterCount = parameters.Length
+            t.GetConstructors(bindingFlags)
+            |> Seq.find (fun x -> x.GetParameters().Length = parameterCount)
+
+        let ctor = getCtor t
+
+        let genericParameters = t.GetGenericArguments()
+        (ctor.GetParameters(), parameters)
+        ||> Seq.iter2 (fun param value ->
+            if param.ParameterType.IsGenericParameter then
+                genericParameters.[param.ParameterType.GenericParameterPosition] <- value.GetType()
+            )
+
+        let ctor = getCtor (t.MakeGenericType(genericParameters))
+        ctor.Invoke(parameters)
+
 module Primitive =
     [<Struct>]
     type Sphere =
@@ -22,7 +48,7 @@ module Primitive =
 
 module Combine =
     [<Struct>]
-    type Union<'a, 'b
+    type private Union<'a, 'b
         when 'a :> ISignedDistanceField
         and 'b :> ISignedDistanceField
         > =
@@ -39,38 +65,13 @@ module Combine =
                 )
 
     let union (a:ISignedDistanceField) (b:ISignedDistanceField) =
-        {
-            Union.A = a
-            B = b
-        } :> ISignedDistanceField
+        Helper.construct<Union<_, _>> [|
+            box a
+            box b
+        |] :?> ISignedDistanceField
 
     [<Struct>]
-    type UnionSmooth<'a, 'b
-        when 'a :> ISignedDistanceField
-        and 'b :> ISignedDistanceField
-        > =
-        {
-            Strength : float32
-            mutable A:'a
-            mutable B:'b
-        }
-
-        interface ISignedDistanceField with
-            member this.GetDistance(position) =
-                let a = this.A.GetDistance(position)
-                let b = this.B.GetDistance(position)
-                let res = Math.Exp(float (-this.Strength * a)) + Math.Exp(float (-this.Strength * b))
-                float32 <| (-Math.Log( res ) / float this.Strength)
-
-    let unionSmooth (strength:float32) (a:ISignedDistanceField) (b:ISignedDistanceField) =
-        {
-            UnionSmooth.Strength = strength
-            A = a
-            B = b
-        } :> ISignedDistanceField
-
-    [<Struct>]
-    type Intersection<'a, 'b
+    type private Intersection<'a, 'b
         when 'a :> ISignedDistanceField
         and 'b :> ISignedDistanceField
         > =
@@ -86,13 +87,13 @@ module Combine =
                 )
 
     let intersection (a:ISignedDistanceField) (b:ISignedDistanceField) =
-        {
-            Intersection.A = a
-            B = b
-        } :> ISignedDistanceField
+        Helper.construct<Intersection<_, _>> [|
+            box a
+            box b
+        |] :?> ISignedDistanceField
 
     [<Struct>]
-    type Subtraction<'a, 'b
+    type private Subtraction<'a, 'b
         when 'a :> ISignedDistanceField
         and 'b :> ISignedDistanceField
         > =
@@ -108,61 +109,65 @@ module Combine =
                 )
 
     let subtraction (a:ISignedDistanceField) (b:ISignedDistanceField) =
-        {
-            Subtraction.A = a
-            B = b
-        } :> ISignedDistanceField
+        Helper.construct<Subtraction<_, _>> [|
+            box a
+            box b
+        |] :?> ISignedDistanceField
 
-    module Operators =
-        let inline (<|>) (a) (b) = union a b
-        let inline (<&>) (a) (b) = intersection a b
-        let inline (<->) (a) (b) = intersection a b
+    type private IUnionSmoothSum =
+        abstract Get : strength:float32 * position:Vector3 -> float
+
+    [<Struct>]
+    type private UnionSmoothSumSingle<'sdf when 'sdf :> ISignedDistanceField> =
+        {
+        mutable Sdf : 'sdf
+        }
+
+        interface IUnionSmoothSum with
+            member this.Get(strength, position) =
+                Math.Exp(float (-strength * this.Sdf.GetDistance(position)))
+
+    [<Struct>]
+    type private UnionSmoothSumCombine<'sum, 'sdf
+        when 'sum :> IUnionSmoothSum
+        and 'sdf :> ISignedDistanceField> =
+        {
+        mutable Sum : 'sum
+        mutable Sdf : 'sdf
+        }
+
+        interface IUnionSmoothSum with
+            member this.Get(strength, position) =
+                this.Sum.Get(strength, position) + Math.Exp(float (-strength * this.Sdf.GetDistance(position)))
+
+    [<Struct>]
+    type private UnionSmooth<'sum
+        when 'sum :> IUnionSmoothSum
+        > =
+        {
+            Strength : float32
+            mutable Sum : 'sum
+        }
+
+        interface ISignedDistanceField with
+            member this.GetDistance(position) =
+                float32 <| (-Math.Log( this.Sum.Get(this.Strength, position) ) / float this.Strength)
+
+    let unionSmooth (strength:float32) (sdfs:ISignedDistanceField list) =
+        match sdfs with
+        | [] -> failwithf "blub"
+        | [sdf] -> sdf
+        | sdf :: sdfs ->
+            let sum =
+                (Helper.construct<UnionSmoothSumSingle<_>> [|box sdf|] :?> IUnionSmoothSum, sdfs)
+                ||> List.fold (fun sum sdf -> Helper.construct<UnionSmoothSumCombine<_, _>> [|box sum; box sdf|] :?> IUnionSmoothSum)
+
+            Helper.construct<UnionSmooth<_>> [|
+                box strength
+                box sum
+            |] :?> ISignedDistanceField
 
 module Test =
-    // convert the whole nested tree into a single (generic) struct
-    let compile (sdf:ISignedDistanceField) =
-        let bindingFlags =
-            Reflection.BindingFlags.Instance
-            ||| Reflection.BindingFlags.Public
-            ||| Reflection.BindingFlags.NonPublic
-
-        let rec loop (sdf:ISignedDistanceField) =
-            let t = sdf.GetType()
-            if  t.IsValueType
-                && t.IsConstructedGenericType
-            then
-                let tGeneric = t.GetGenericTypeDefinition()
-                let genericArguments = t.GetGenericArguments()
-
-                let fields = t.GetFields(bindingFlags)
-
-                let values =
-                    fields
-                    |> Array.zip (tGeneric.GetFields(bindingFlags) |> Array.map (fun x -> x.FieldType))
-                    |> Array.map (fun (genericType, field) ->
-                        let value = field.GetValue(sdf)
-
-                        if  genericType.IsGenericParameter
-                            && typeof<ISignedDistanceField> = field.FieldType
-                        then
-                            let valueCompiled = loop (value :?> ISignedDistanceField) |> box
-                            genericArguments.[genericType.GenericParameterPosition] <- valueCompiled.GetType()
-                            valueCompiled
-                        else
-                            value
-                        )
-
-                let instance = Activator.CreateInstance(t)
-
-                (fields, values)
-                ||> Seq.iter2 (fun (field) (value) -> field.SetValue(instance, value))
-
-                instance :?> ISignedDistanceField
-            else
-                sdf
-
-        loop sdf
-
     let trace (epsilon:float32) (sdf:ISignedDistanceField) (ray:Ray) =
         let direction = ray.Direction
         let position = ray.Position
@@ -170,7 +175,7 @@ module Test =
         let rec test (position:Vector3) (length:float32) =
             let distance = sdf.GetDistance(position)
             if distance < epsilon then
-                ValueSome position
+                ValueSome (position, distance)
             elif length > 10000.0f then
                 ValueNone
             else
@@ -187,14 +192,22 @@ module Test =
         Vector3(f Vector3.UnitX, f Vector3.UnitY, f Vector3.UnitZ)
         |> Vector3.normalized
 
+    let normalFAST (epsilon:float32) (sdf:ISignedDistanceField) (position:Vector3) (distanceAtPosition:float32) =
+        Vector3(
+            distanceAtPosition - sdf.GetDistance(position + Vector3.UnitX * epsilon),
+            distanceAtPosition - sdf.GetDistance(position + Vector3.UnitY * epsilon),
+            distanceAtPosition - sdf.GetDistance(position + Vector3.UnitZ * epsilon)
+        )
+        |> Vector3.normalized
+
     let traceWithDirectionalLigth (epsilon:float32) (lightDirection:Vector3) (sdf:ISignedDistanceField) =
         let inline trace (ray) = trace epsilon sdf ray
         let normalEpsilon = epsilon / 10.0f
-        let inline normal (position) = normal normalEpsilon sdf position
+        let inline normal (position) (distance) = normalFAST normalEpsilon sdf position distance
 
         fun (ray:Ray) ->
         match  trace ray with
-        | ValueSome position ->
+        | ValueSome (position, distance) ->
             let light =
                 (*// shadow
                 let ray = {
@@ -209,7 +222,7 @@ module Test =
                 | ValueSome _ ->
                     0.0f*)
 
-                Vector3.Dot(normal position, lightDirection)
+                Vector3.Dot(normal position distance, lightDirection)
                 |> Math.max 0.0f
 
             0.1f + light * 0.9f

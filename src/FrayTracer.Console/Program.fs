@@ -37,8 +37,10 @@ let randomSphere () =
 
 let sdf =
     List.init 50 (fun _ -> randomSphere ())
-    |> List.reduce (SDF.Combine.unionSmooth 6.0f)
-    |> FrayTracer.SDF.Test.compile
+    |> SDF.Combine.unionSmooth 6.0f
+    //|> List.reduce SDF.Combine.union
+
+//printfn "%A" (sdf.GetType())
 
 let timer = Stopwatch.StartNew()
 
