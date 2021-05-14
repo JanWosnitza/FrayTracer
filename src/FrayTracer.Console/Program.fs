@@ -53,10 +53,7 @@ let sdf3 =
             Center = Vector3(1.f,0.f,0.f)
             Radius = 2.f
         }
-    //SDF.Combine.unionSmooth 10.f [a; b]
-    b
-
-let watch = Stopwatch()
+    SDF.Combine.unionSmooth 10.f [a; b]
 
 let sdf = sdf1
 //printfn "%A" (sdf.GetType())
@@ -64,17 +61,16 @@ let sdf = sdf1
 let timer = Stopwatch.StartNew()
 let traced =
     sdf
-    |> SDF.Combine.measure watch
+    |> SDF.Combine.cache 0.1f 0.01f
     |> SDF.Test.traceWithDirectionalLigth 0.01f 1000f Vector3.UnitZ
     |> Image.render imageSize camera
 timer.Stop()
 
-printfn "measure = %10.0f ms" watch.Elapsed.TotalMilliseconds
 printfn "Time    = %10.0f ms" timer.Elapsed.TotalMilliseconds
 
 traced
 |> Image.normalize
-//|> Image.gamma 2.2f
+|> Image.gamma 2.2f
 |> Image.dither (1.0f / 256.0f)
 |> Image.saveBitmap "test"
 |> shellOpen

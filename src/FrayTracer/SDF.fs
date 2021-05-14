@@ -46,9 +46,9 @@ module Primitive =
 
         interface ISignedDistanceField with
             member this.GetDistance(position) =
-                let x = position.X - this.Center.X
-                let y = position.Y - this.Center.Y
-                let z = position.Z - this.Center.Z
+                //let x = position.X - this.Center.X
+                //let y = position.Y - this.Center.Y
+                //let z = position.Z - this.Center.Z
                 //MathF.Sqrt(x * x + y * y + z * z) - this.Radius
                 Vector3.Distance(this.Center, position) - this.Radius
 
@@ -173,6 +173,55 @@ module Combine =
             Helper.construct<UnionSmooth<_>> [|
                 box strength
                 box sum
+            |] :?> ISignedDistanceField
+
+    [<Struct>]
+    type private Cache<'sdf
+        when 'sdf :> ISignedDistanceField
+        > =
+        {
+            Width : float32
+            HalfDiagonal : float32
+            Epsilon : float32
+            CachedDistances : System.Collections.Concurrent.ConcurrentDictionary<struct (int * int * int), float32>
+            mutable Sdf : 'sdf
+        }
+
+        interface ISignedDistanceField with
+            member this.GetDistance(position) =
+                let width = this.Width
+                let x = MathF.roundToInt (position.X / width)
+                let y = MathF.roundToInt (position.Y / width)
+                let z = MathF.roundToInt (position.Z / width)
+
+                let optDistance =
+                    let pos = struct (x, y, z)
+                    match this.CachedDistances.TryGetValue(pos) with
+                    | true, optDistance -> optDistance
+                    | _ ->
+                        let distance =
+                            this.Sdf.GetDistance(Vector3(float32 x * width, float32 y * width, float32 z * width))
+                            - this.HalfDiagonal
+                        
+                        let optDistance =
+                            if distance > this.Epsilon
+                            then distance
+                            else Single.NaN
+                        this.CachedDistances.TryAdd(pos, optDistance) |> ignore
+                        optDistance
+
+                if Single.IsNaN(optDistance) then
+                    this.Sdf.GetDistance(position)
+                else
+                    optDistance
+
+    let cache (width:float32) (epsilon:float32) (sdf:ISignedDistanceField) =
+            Helper.construct<Cache<_>> [|
+                box width
+                box (sqrt (width * width * 3f) * 0.5f)
+                box epsilon
+                box (System.Collections.Concurrent.ConcurrentDictionary<struct (int * int * int), float32>())
+                box sdf
             |] :?> ISignedDistanceField
 
     [<Struct>]

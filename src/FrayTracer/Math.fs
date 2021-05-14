@@ -25,6 +25,8 @@ module MathF =
     let inline clamp (min:float32) (max:float32) (x:float32) =
         MathF.Max(min, MathF.Min(max, x))
 
+    let inline roundToInt (x:float32) = MathF.Round(x) |> int
+
 [<RequireQualifiedAccess>]
 module Vector3 =
     let inline dot (v1) (v2) = Vector3.Dot(v1, v2)
