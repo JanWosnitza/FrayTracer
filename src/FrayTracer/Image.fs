@@ -24,19 +24,14 @@ module ImageSize =
 module Image =
     let render (imageSize:ImageSize) (camera) (trace:Ray -> float32) =
         let getUniformPixelPos = ImageSize.getUniformPixelPos imageSize
-        let image = Array2D.create imageSize.X imageSize.Y 0.0f
-
-        for x = 0 to (imageSize.X - 1) do
-            for y = 0 to (imageSize.Y - 1) do
-                image.[x, y] <-
-                    let ray =
-                        Vector2(float32 x, float32 y)
-                        |> getUniformPixelPos
-                        |> Camera.uniformPixelToRay camera
+        Array2D.Parallel.init imageSize.X imageSize.Y (fun x y ->
+            let ray =
+                Vector2(float32 x, float32 y)
+                |> getUniformPixelPos
+                |> Camera.uniformPixelToRay camera
                     
-                    trace ray
-
-        image
+            trace ray
+        )
 
     let normalize (image:float32[,]) =
         let max = Array2D.max image
