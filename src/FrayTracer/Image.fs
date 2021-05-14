@@ -5,6 +5,7 @@ open System.Drawing
 open System.IO
 open System.Drawing.Imaging
 
+[<Struct>]
 type ImageSize =
     {
     X : int
@@ -12,8 +13,9 @@ type ImageSize =
     }
 
 module ImageSize =
-    let getUniformPixelPos (size:ImageSize) (position:Vector2) =
+    let getUniformPixelPos (size:ImageSize) =
         let maxSize = max size.X size.Y |> float32
+        fun (position:Vector2) ->
         Vector2(
             position.X / maxSize,
             position.Y / maxSize
@@ -21,12 +23,20 @@ module ImageSize =
 
 module Image =
     let render (imageSize:ImageSize) (camera) (trace:Ray -> float32) =
-        Array2D.Parallel.init imageSize.X imageSize.Y 
-        <| fun x y ->
-        Vector2(float32 x, float32 y)
-        |> ImageSize.getUniformPixelPos imageSize
-        |> Camera.uniformPixelToRay camera
-        |> trace
+        let getUniformPixelPos = ImageSize.getUniformPixelPos imageSize
+        let image = Array2D.create imageSize.X imageSize.Y 0.0f
+
+        for x = 0 to (imageSize.X - 1) do
+            for y = 0 to (imageSize.Y - 1) do
+                image.[x, y] <-
+                    let ray =
+                        Vector2(float32 x, float32 y)
+                        |> getUniformPixelPos
+                        |> Camera.uniformPixelToRay camera
+                    
+                    trace ray
+
+        image
 
     let normalize (image:float32[,]) =
         let max = Array2D.max image

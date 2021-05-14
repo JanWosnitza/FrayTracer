@@ -6,7 +6,7 @@ type Vector2 = System.Numerics.Vector2
 type Vector3 = System.Numerics.Vector3
 
 [<RequireQualifiedAccess>]
-module Math =
+module MathF =
     let pi = float32 Math.PI
     let pi2 = float32 (Math.PI * 2.0)
 
@@ -17,13 +17,13 @@ module Math =
     let inline radToDeg (x) = x * 180.0f / pi
 
     let inline min (min:float32) (x:float32) =
-        Math.Min(min, x)
+        MathF.Min(min, x)
 
     let inline max (max:float32) (x:float32) =
-        Math.Max(max, x)
+        MathF.Max(max, x)
 
     let inline clamp (min:float32) (max:float32) (x:float32) =
-        Math.Max(min, Math.Min(max, x))
+        MathF.Max(min, MathF.Min(max, x))
 
 [<RequireQualifiedAccess>]
 module Vector3 =

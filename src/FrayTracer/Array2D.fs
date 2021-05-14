@@ -16,9 +16,9 @@ let ofArrayArray (array:_[][]) =
 
 let toSeq (array:_[,]) =
     seq {
-    for i = 0 to array.GetLength(0) - 1 do
-        for j = 0 to array.GetLength(1) - 1 do
-            yield array.[i, j]
+    for y = 0 to array.GetLength(1) - 1 do
+        for x = 0 to array.GetLength(0) - 1 do
+            yield array.[x, y]
     }
 
 let max (array:_[,]) =

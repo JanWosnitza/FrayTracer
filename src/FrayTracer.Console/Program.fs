@@ -35,22 +35,42 @@ let randomSphere () =
     }
         //(Material.surface (Random.uniform 0.4f 0.8f))
 
-let sdf =
+let sdf1 =
     List.init 50 (fun _ -> randomSphere ())
     |> SDF.Combine.unionSmooth 6.0f
     //|> List.reduce SDF.Combine.union
 
+//let sdf2 = {new SDF.ISignedDistanceField with member this.GetDistance(position: Vector3): float32 = position.Y - position.X}
+
+let sdf3 =
+    let a =
+        SDF.Primitive.sphere {
+            Center = Vector3(-1.f, 0.f, 0.f)
+            Radius = 1.f
+        }
+    let b =
+        SDF.Primitive.sphere {
+            Center = Vector3(1.f,0.f,0.f)
+            Radius = 2.f
+        }
+    //SDF.Combine.unionSmooth 10.f [a; b]
+    b
+
+let watch = Stopwatch()
+
+let sdf = sdf1
 //printfn "%A" (sdf.GetType())
 
 let timer = Stopwatch.StartNew()
-
 let traced =
     sdf
-    |> SDF.Test.traceWithDirectionalLigth 0.01f Vector3.UnitZ
+    |> SDF.Combine.measure watch
+    |> SDF.Test.traceWithDirectionalLigth 0.01f 1000f Vector3.UnitZ
     |> Image.render imageSize camera
-
 timer.Stop()
-printfn "Time = %A" timer.Elapsed
+
+printfn "measure = %10.0f ms" watch.Elapsed.TotalMilliseconds
+printfn "Time    = %10.0f ms" timer.Elapsed.TotalMilliseconds
 
 traced
 |> Image.normalize

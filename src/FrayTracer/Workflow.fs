@@ -18,13 +18,3 @@ type Material =
     RefractionIndex : float32
     Intensity : float32
     }
-
-[<Struct>]
-type RayCastResult =
-    {
-    Length : float32
-    Normal : Vector3
-    Material : Material
-    }
-
-type Scene = Ray -> RayCastResult option

@@ -32,6 +32,10 @@ module Helper =
         let ctor = getCtor (t.MakeGenericType(genericParameters))
         ctor.Invoke(parameters)
 
+    let construct'<'Type when 'Type : struct> (parameters:obj[]) =
+        let ctor = typeof<'Type>.GetConstructors(bindingFlags).[0]
+        ctor.Invoke(parameters)
+
 module Primitive =
     [<Struct>]
     type Sphere =
@@ -42,6 +46,10 @@ module Primitive =
 
         interface ISignedDistanceField with
             member this.GetDistance(position) =
+                let x = position.X - this.Center.X
+                let y = position.Y - this.Center.Y
+                let z = position.Z - this.Center.Z
+                //MathF.Sqrt(x * x + y * y + z * z) - this.Radius
                 Vector3.Distance(this.Center, position) - this.Radius
 
     let sphere (x:Sphere) = x  :> ISignedDistanceField
@@ -59,7 +67,7 @@ module Combine =
 
         interface ISignedDistanceField with
             member this.GetDistance(position) =
-                Math.Min(
+                MathF.Min(
                     this.A.GetDistance(position),
                     this.B.GetDistance(position)
                 )
@@ -81,7 +89,7 @@ module Combine =
         }
         interface ISignedDistanceField with
             member this.GetDistance(position) =
-                Math.Max(
+                MathF.Max(
                     this.A.GetDistance(position),
                     this.B.GetDistance(position)
                 )
@@ -103,7 +111,7 @@ module Combine =
         }
         interface ISignedDistanceField with
             member this.GetDistance(position) =
-                Math.Max(
+                MathF.Max(
                     this.A.GetDistance(position),
                     -this.B.GetDistance(position)
                 )
@@ -115,7 +123,7 @@ module Combine =
         |] :?> ISignedDistanceField
 
     type private IUnionSmoothSum =
-        abstract Get : strength:float32 * position:Vector3 -> float
+        abstract Get : strength:float32 * position:Vector3 -> float32
 
     [<Struct>]
     type private UnionSmoothSumSingle<'sdf when 'sdf :> ISignedDistanceField> =
@@ -125,7 +133,7 @@ module Combine =
 
         interface IUnionSmoothSum with
             member this.Get(strength, position) =
-                Math.Exp(float (-strength * this.Sdf.GetDistance(position)))
+                MathF.Exp(-strength * this.Sdf.GetDistance(position))
 
     [<Struct>]
     type private UnionSmoothSumCombine<'sum, 'sdf
@@ -138,7 +146,7 @@ module Combine =
 
         interface IUnionSmoothSum with
             member this.Get(strength, position) =
-                this.Sum.Get(strength, position) + Math.Exp(float (-strength * this.Sdf.GetDistance(position)))
+                this.Sum.Get(strength, position) + MathF.Exp(-strength * this.Sdf.GetDistance(position))
 
     [<Struct>]
     type private UnionSmooth<'sum
@@ -151,7 +159,7 @@ module Combine =
 
         interface ISignedDistanceField with
             member this.GetDistance(position) =
-                float32 <| (-Math.Log( this.Sum.Get(this.Strength, position) ) / float this.Strength)
+                float32 <| (-MathF.Log(this.Sum.Get(this.Strength, position)) / this.Strength)
 
     let unionSmooth (strength:float32) (sdfs:ISignedDistanceField list) =
         match sdfs with
@@ -167,8 +175,31 @@ module Combine =
                 box sum
             |] :?> ISignedDistanceField
 
+    [<Struct>]
+    type private Measure<'sdf
+        when 'sdf :> ISignedDistanceField
+        > =
+        {
+            Stopwatch : System.Diagnostics.Stopwatch
+            mutable Sdf : 'sdf
+        }
+
+        interface ISignedDistanceField with
+            member this.GetDistance(position) =
+                this.Stopwatch.Start()
+                try
+                    this.Sdf.GetDistance(position)
+                finally
+                    this.Stopwatch.Stop()
+
+    let measure (stopwatch) (sdf:ISignedDistanceField) =
+            Helper.construct<Measure<_>> [|
+                box stopwatch
+                box sdf
+            |] :?> ISignedDistanceField
+
 module Test =
-    let trace (epsilon:float32) (sdf:ISignedDistanceField) (ray:Ray) =
+    let trace (epsilon:float32) (length:float32) (sdf:ISignedDistanceField) (ray:Ray) =
         let direction = ray.Direction
         let position = ray.Position
 
@@ -176,13 +207,13 @@ module Test =
             let distance = sdf.GetDistance(position)
             if distance < epsilon then
                 ValueSome (position, distance)
-            elif length > 10000.0f then
+            elif length <= 0f then
                 ValueNone
             else
-                test (position + direction * distance) (length + distance)
+                test (position + direction * distance) (length - distance)
 
         let distance = sdf.GetDistance(position)
-        test (position + direction * distance) distance
+        test (position + direction * distance) length
 
     let normal (epsilon:float32) (sdf:ISignedDistanceField) (position:Vector3) =
         let inline f (dimension:Vector3) =
@@ -200,8 +231,8 @@ module Test =
         )
         |> Vector3.normalized
 
-    let traceWithDirectionalLigth (epsilon:float32) (lightDirection:Vector3) (sdf:ISignedDistanceField) =
-        let inline trace (ray) = trace epsilon sdf ray
+    let traceWithDirectionalLigth (epsilon:float32) (length:float32) (lightDirection:Vector3) (sdf:ISignedDistanceField) =
+        let inline trace (ray) = trace epsilon length sdf ray
         let normalEpsilon = epsilon / 10.0f
         let inline normal (position) (distance) = normalFAST normalEpsilon sdf position distance
 
@@ -223,7 +254,7 @@ module Test =
                     0.0f*)
 
                 Vector3.Dot(normal position distance, lightDirection)
-                |> Math.max 0.0f
+                |> MathF.max 0.0f
 
             0.1f + light * 0.9f
         | ValueNone -> 0.0f

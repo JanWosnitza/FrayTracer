@@ -23,7 +23,7 @@ let normalN11 () =
     let u2 = uniform_01 ()
 
     let a = sqrt (-2.0f * log u1)
-    let b = Math.pi2 * u2
+    let b = MathF.pi2 * u2
 
     let z0 = a * cos b
     //let z1 = a * sin b
