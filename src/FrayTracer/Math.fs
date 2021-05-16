@@ -10,11 +10,16 @@ module MathF =
     let pi = float32 Math.PI
     let pi2 = float32 (Math.PI * 2.0)
 
+    let sqrt (x:float32) = sqrt x
+
     let sqrt2 = sqrt 2.0f
     let sqrt3 = sqrt 3.0f
 
     let inline degToRad (x) = x * pi / 180.0f
     let inline radToDeg (x) = x * 180.0f / pi
+
+    let inline abs (x:float32) =
+        MathF.Abs(x)
 
     let inline min (min:float32) (x:float32) =
         MathF.Min(min, x)
@@ -29,6 +34,8 @@ module MathF =
 
 [<RequireQualifiedAccess>]
 module Vector3 =
+    let inline length (v:Vector3) = v.Length()
+
     let inline dot (v1) (v2) = Vector3.Dot(v1, v2)
 
     let inline cross (v1) (v2) = Vector3.Cross(v1, v2)

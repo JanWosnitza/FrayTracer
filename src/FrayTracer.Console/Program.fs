@@ -22,46 +22,35 @@ let camera =
 
 let size = 1000
 
-let imageSize =
-    {
-    X = size
-    Y = size
-    }
+let imageSize = {X = size; Y = size}
 
 let randomSphere () =
     SDF.Primitive.sphere {
         Center = Random.pointInBall () * 5.0f
         Radius = Random.uniform 0.3f 1.0f
     }
-        //(Material.surface (Random.uniform 0.4f 0.8f))
+
+let randomTorus () =
+    SDF.Primitive.torus {
+        Center = Random.pointInBall () * 5.0f
+        Normal = Random.pointOnSphere ()
+        MajorRadius = Random.uniform 0.5f 1.0f
+        MinorRadius = Random.uniform 0.1f 0.3f
+    }
 
 let sdf1 =
-    List.init 50 (fun _ -> randomSphere ())
-    |> SDF.Combine.unionSmooth 6.0f
-    //|> List.reduce SDF.Combine.union
-
-//let sdf2 = {new SDF.ISignedDistanceField with member this.GetDistance(position: Vector3): float32 = position.Y - position.X}
-
-let sdf3 =
-    let a =
-        SDF.Primitive.sphere {
-            Center = Vector3(-1.f, 0.f, 0.f)
-            Radius = 1.f
-        }
-    let b =
-        SDF.Primitive.sphere {
-            Center = Vector3(1.f,0.f,0.f)
-            Radius = 2.f
-        }
-    SDF.Combine.unionSmooth 10.f [a; b]
+    List.init 50 (fun _ -> randomTorus ())
+    |> SDF.Combine.unionSmooth 0.2f
 
 let lightDir = (0f, -1f, 1f) |> Vector3 |> Vector3.normalized
 let epsilon = 0.02f
 
 let sdf =
     sdf1
-    |> SDF.Combine.cache 0.1f epsilon
+    |> SDF.Performance.cache 0.1f epsilon
 //printfn "%A" (sdf.GetType())
+
+printfn $"Rendering..."
 
 let timer = Stopwatch.StartNew()
 let traced =
@@ -70,7 +59,7 @@ let traced =
     |> Image.render imageSize camera
 timer.Stop()
 
-printfn "Time    = %5.1f ms" timer.Elapsed.TotalSeconds
+printfn $"Time = {timer.Elapsed.TotalSeconds:F1} sec"
 
 //System.forms
 

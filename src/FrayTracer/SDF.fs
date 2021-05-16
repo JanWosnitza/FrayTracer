@@ -7,17 +7,40 @@ type ISignedDistanceField =
     abstract GetDistance : position:Vector3 -> float32
 
 module Primitive =
+    [<Struct>]
     type Sphere =
         {
             Center : Vector3
             Radius : float32
         }
 
-        interface ISignedDistanceField with
+    let sphere (data:Sphere) =
+        {new ISignedDistanceField with
             member this.GetDistance(position) =
-                Vector3.Distance(this.Center, position) - this.Radius
+                Vector3.Distance(data.Center, position) - data.Radius
+        }
 
-    let sphere (x:Sphere) = x  :> ISignedDistanceField
+    [<Struct>]
+    type Torus =
+        {
+            Center : Vector3
+            Normal : Vector3
+            MajorRadius : float32
+            MinorRadius : float32
+        }
+
+    let torus (data:Torus) =
+        let normal = data.Normal |> Vector3.normalized
+        let planeD = Vector3.dot data.Center normal
+
+        {new ISignedDistanceField with
+            member this.GetDistance(position) =
+                let distanceToPlane = Vector3.Dot(position, normal) - planeD
+                let distanceToCenter = Vector3.Distance(data.Center, position - (distanceToPlane * normal))
+                let distanceToCircle = MathF.abs (distanceToCenter - data.MajorRadius)
+
+                Vector2(distanceToPlane, distanceToCircle).Length() - data.MinorRadius
+        }
 
 module Combine =
     let union (a:ISignedDistanceField) (b:ISignedDistanceField) =
@@ -54,15 +77,19 @@ module Combine =
         | _ ->
             let sdfs = sdfs |> List.toArray
 
+            let strengthInverse = 1f / strength
+
             {new ISignedDistanceField with
                 member this.GetDistance(position) =
                     let mutable sum = 0f
                     for i = 0 to sdfs.Length - 1 do
-                        sum <- sum + MathF.Exp(-strength * sdfs.[i].GetDistance(position))
+                        let distance = sdfs.[i].GetDistance(position)
+                        sum <- sum + MathF.Exp(-strengthInverse * distance)
 
-                    -MathF.Log(sum) / strength
+                    -MathF.Log(sum) * strength
             }
 
+module Performance =
     let cache (width:float32) (epsilon:float32) (sdf:ISignedDistanceField) =
         let halfDiagonal = sqrt (width * width * 3f) * 0.5f
         let cachedDistances = System.Collections.Concurrent.ConcurrentDictionary<struct (int * int * int), float32>()
