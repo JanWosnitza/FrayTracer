@@ -30,7 +30,7 @@ module Camera =
 
     let lookAt (camera:LookAt) =
         let forward = (camera.LookAt - camera.Position) |> Vector3.normalized
-        let right = Vector3.cross forward camera.Up |> Vector3.normalized
+        let right = Vector3.cross camera.Up forward |> Vector3.normalized
         
         {
         Position = camera.Position

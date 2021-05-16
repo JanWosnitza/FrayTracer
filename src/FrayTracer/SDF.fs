@@ -267,43 +267,42 @@ module Test =
     let normal (epsilon:float32) (sdf:ISignedDistanceField) (position:Vector3) =
         let inline f (dimension:Vector3) =
             let epsilon = dimension * epsilon
-            sdf.GetDistance(position - epsilon) - sdf.GetDistance(position + epsilon)
+            sdf.GetDistance(position + epsilon) - sdf.GetDistance(position - epsilon)
 
         Vector3(f Vector3.UnitX, f Vector3.UnitY, f Vector3.UnitZ)
         |> Vector3.normalized
 
     let normalFAST (epsilon:float32) (sdf:ISignedDistanceField) (position:Vector3) (distanceAtPosition:float32) =
         Vector3(
-            distanceAtPosition - sdf.GetDistance(position + Vector3.UnitX * epsilon),
-            distanceAtPosition - sdf.GetDistance(position + Vector3.UnitY * epsilon),
-            distanceAtPosition - sdf.GetDistance(position + Vector3.UnitZ * epsilon)
+            sdf.GetDistance(position + Vector3.UnitX * epsilon) - distanceAtPosition,
+            sdf.GetDistance(position + Vector3.UnitY * epsilon) - distanceAtPosition,
+            sdf.GetDistance(position + Vector3.UnitZ * epsilon) - distanceAtPosition
         )
         |> Vector3.normalized
 
-    let traceWithDirectionalLigth (epsilon:float32) (length:float32) (lightDirection:Vector3) (sdf:ISignedDistanceField) =
+    let traceWithDirectionalLigth (epsilon:float32) (length:float32) (sdf:ISignedDistanceField) (lightDirection:Vector3) =
         let inline trace (ray) = trace epsilon length sdf ray
-        let normalEpsilon = epsilon / 10.0f
+        let normalEpsilon = epsilon / 1.0f
         let inline normal (position) (distance) = normalFAST normalEpsilon sdf position distance
 
+        let lightDirection = -lightDirection
         fun (ray:Ray) ->
         match  trace ray with
         | ValueSome (position, distance) ->
+            let normal = normal position distance
             let light =
-                (*// shadow
-                let ray = {
-                    Position = position - lightDirection * epsilon
-                    Direction = -lightDirection
-                }
-                match trace ray with
-                | ValueNone ->
-                    lightDirection
-                    |> Vector3.dot (normal position)
-                    |> Math.max 0.0f
-                | ValueSome _ ->
-                    0.0f*)
+                let dot = Vector3.dot normal lightDirection
 
-                Vector3.Dot(normal position distance, lightDirection)
-                |> MathF.max 0.0f
+                if dot <= 0f then
+                    0f
+                else
+                    // shadow
+                    trace {
+                        Position = position + normal * epsilon
+                        Direction = lightDirection
+                    } |> function
+                    | ValueNone -> dot
+                    | ValueSome _ -> 0.0f
 
             0.1f + light * 0.9f
         | ValueNone -> 0.0f

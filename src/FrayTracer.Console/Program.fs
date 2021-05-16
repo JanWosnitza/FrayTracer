@@ -10,7 +10,7 @@ let shellOpen (path) =
 // MAIN
 
 // 19 36 78 86
-Random.setSeed 86
+Random.setSeed 78 //86
 
 let camera =
     Camera.lookAt {
@@ -55,18 +55,24 @@ let sdf3 =
         }
     SDF.Combine.unionSmooth 10.f [a; b]
 
-let sdf = sdf1
+let lightDir = (0f, -1f, 1f) |> Vector3 |> Vector3.normalized
+let epsilon = 0.02f
+
+let sdf =
+    sdf1
+    |> SDF.Combine.cache 0.1f epsilon
 //printfn "%A" (sdf.GetType())
 
 let timer = Stopwatch.StartNew()
 let traced =
-    sdf
-    |> SDF.Combine.cache 0.1f 0.01f
-    |> SDF.Test.traceWithDirectionalLigth 0.01f 1000f Vector3.UnitZ
+    (sdf, lightDir)
+    ||> SDF.Test.traceWithDirectionalLigth  epsilon 1000f
     |> Image.render imageSize camera
 timer.Stop()
 
-printfn "Time    = %10.0f ms" timer.Elapsed.TotalMilliseconds
+printfn "Time    = %5.1f ms" timer.Elapsed.TotalSeconds
+
+//System.forms
 
 traced
 |> Image.normalize
