@@ -22,13 +22,13 @@ module ImageSize =
         )
 
 module Image =
-    let render (imageSize:ImageSize) (camera) (trace:Ray -> float32) =
+    let render (imageSize:ImageSize) (camera) (epsilon:float32) (trace:Ray -> float32) =
         let getUniformPixelPos = ImageSize.getUniformPixelPos imageSize
         Array2D.Parallel.init imageSize.X imageSize.Y (fun x y ->
             let ray =
                 Vector2(float32 x, float32 y)
                 |> getUniformPixelPos
-                |> Camera.uniformPixelToRay camera
+                |> Camera.uniformPixelToRay epsilon camera
                     
             trace ray
         )

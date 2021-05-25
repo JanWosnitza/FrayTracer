@@ -30,6 +30,14 @@ let randomSphere () =
         Radius = Random.uniform 0.3f 1.0f
     }
 
+let randomCapsule () =
+    let center = Random.pointInBall () * 5.0f
+    SDF.Primitive.capsule {
+        From = center
+        To = center + Random.pointOnSphere () * Random.uniform 0.5f 2.0f
+        Radius = Random.uniform 0.1f 0.3f
+    }
+
 let randomTorus () =
     SDF.Primitive.torus {
         Center = Random.pointInBall () * 5.0f
@@ -40,14 +48,15 @@ let randomTorus () =
 
 let sdf1 =
     List.init 50 (fun _ -> randomTorus ())
-    |> SDF.Combine.unionSmooth 0.2f
+    |> SDF.Combine.union
+    //|> SDF.Combine.unionSmooth 0.2f
 
 let lightDir = (0f, -1f, 1f) |> Vector3 |> Vector3.normalized
-let epsilon = 0.02f
+let epsilon = 0.01f
 
 let sdf =
     sdf1
-    |> SDF.Performance.cache 0.1f epsilon
+    //|> SDF.Performance.cache 0.1f epsilon
 //printfn "%A" (sdf.GetType())
 
 printfn $"Rendering..."
@@ -55,8 +64,8 @@ printfn $"Rendering..."
 let timer = Stopwatch.StartNew()
 let traced =
     (sdf, lightDir)
-    ||> SDF.Test.traceWithDirectionalLigth  epsilon 1000f
-    |> Image.render imageSize camera
+    ||> SDF.Test.traceWithDirectionalLigth epsilon 1000f
+    |> Image.render imageSize camera epsilon
 timer.Stop()
 
 printfn $"Time = {timer.Elapsed.TotalSeconds:F1} sec"

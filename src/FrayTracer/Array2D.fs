@@ -28,5 +28,5 @@ let max (array:_[,]) =
 
 module Parallel =
     let init (length1) (length2) (f) =
-        Array.init length1 (fun x -> Array.Parallel.init length2 (f x))
+        Array.Parallel.init length1 (fun x -> Array.init length2 (f x))
         |> ofArrayArray

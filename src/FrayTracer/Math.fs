@@ -7,16 +7,22 @@ type Vector3 = System.Numerics.Vector3
 
 [<RequireQualifiedAccess>]
 module MathF =
-    let pi = float32 Math.PI
-    let pi2 = float32 (Math.PI * 2.0)
+    let pi = MathF.PI
+    let pi2 = MathF.PI * 2.0f
 
     let sqrt (x:float32) = sqrt x
 
-    let sqrt2 = sqrt 2.0f
-    let sqrt3 = sqrt 3.0f
+    let [<Literal>] sqrt2 = 1.414213562f // sqrt 2.0f
+    let [<Literal>] sqrt3 = 1.732050808f // sqrt 3.0f
 
-    let inline degToRad (x) = x * pi / 180.0f
-    let inline radToDeg (x) = x * 180.0f / pi
+    let inline degToRad (x) = x * 0.01745329252f
+    let inline radToDeg (x) = x * 57.29577951f
+
+    let inline signi (x:float32) =
+        MathF.Sign(x)
+
+    let inline sign (x:float32) =
+        MathF.Sign(x) |> float32
 
     let inline abs (x:float32) =
         MathF.Abs(x)
@@ -35,6 +41,8 @@ module MathF =
 [<RequireQualifiedAccess>]
 module Vector3 =
     let inline length (v:Vector3) = v.Length()
+
+    let inline length2 (v:Vector3) = v.LengthSquared()
 
     let inline dot (v1) (v2) = Vector3.Dot(v1, v2)
 

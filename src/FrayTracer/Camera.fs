@@ -39,9 +39,10 @@ module Camera =
         RightScaled = right * camera.Lens.NearPlaneSize
         }
 
-    let uniformPixelToRay (camera:Camera) (position:Vector2) =
+    let uniformPixelToRay (epsilon:float32) (camera:Camera) (position:Vector2) =
         {
-        Position = camera.Position
+        Epsilon = epsilon
+        Origin = camera.Position
         Direction =
             camera.Forward
             + (position.X - 0.5f) * camera.RightScaled
