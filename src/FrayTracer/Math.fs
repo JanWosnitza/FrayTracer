@@ -6,6 +6,19 @@ type Vector2 = System.Numerics.Vector2
 type Vector3 = System.Numerics.Vector3
 
 [<RequireQualifiedAccess>]
+module Bits =
+    let inline toPowerOf2Minus1 (x) =
+        let inline f (shift) (x) = x ||| (x >>> shift)
+        x
+        |> f 1
+        |> f 2
+        |> f 4
+        |> f 8
+        |> f 16
+
+    //let toPowerOf2 (x:int) = toPowerOf2Minus1 (x - 1) + 1
+
+[<RequireQualifiedAccess>]
 module MathF =
     let pi = MathF.PI
     let pi2 = MathF.PI * 2.0f

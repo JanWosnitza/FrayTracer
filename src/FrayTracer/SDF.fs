@@ -325,7 +325,7 @@ module Combine =
         loop boundaries
     *)
 
-    let union (sdfs:seq<SdfObject>) =
+    let unionSimple (sdfs:seq<SdfObject>) =
         match sdfs |> Seq.toArray with
         | [||] -> failwith "No SdfObjects given."
         | [|sdf|] -> sdf
@@ -356,6 +356,55 @@ module Combine =
                             min <- MathF.Min(min, distance)
                         min
             }
+
+    let union (sdfs:seq<SdfObject>) =
+        match sdfs |> Seq.toList with
+        | [] -> failwith "No SdfObjects given."
+        | [sdf] -> sdf
+        | sdfs ->
+            // combine objects in an octree like fashion
+
+            let boxMin, boxSize =
+                let min = sdfs |> Seq.map (fun x -> x.Boundary.Center - Vector3(x.Boundary.Radius)) |> Seq.reduce Vector3.min
+                let max = sdfs |> Seq.map (fun x -> x.Boundary.Center + Vector3(x.Boundary.Radius)) |> Seq.reduce Vector3.max
+                let size = max - min |> Vector3.maxDimension
+
+                let center = Vector3.Lerp(min, max, 0.5f)
+
+                center - Vector3(size * 0.5f),  size
+
+            let toInt (x:float32) = x / boxSize * float32 Int32.MaxValue |> MathF.round |> uint
+
+            let rec loop (mask:uint) (sdfs:list<SdfObject>) =
+                match sdfs with
+                | [] -> failwith "unreachable"
+                | [sdf] -> sdf
+                | sdfs ->
+                    // fallback, due to possible floating point inprecision
+                    if mask = UInt32.MaxValue then unionSimple sdfs else
+
+                    let small, big = sdfs |> List.partition (fun o -> toInt o.Boundary.Radius <= mask)
+
+                    let unioned =
+                        small
+                        |> List.groupBy (fun x ->
+                            let p = x.Boundary.Center - boxMin
+                            let mask = ~~~mask
+                            struct (toInt p.X &&& mask, toInt p.Y &&& mask, toInt p.Z &&& mask)
+                        )
+                        |> List.map (fun (_, sdfs) -> unionSimple sdfs)
+
+                    loop ((mask <<< 1) + 1u) (unioned @ big)
+
+            let mask =
+                sdfs
+                |> Seq.map (fun x -> x.Boundary.Radius)
+                |> Seq.min
+                |> toInt
+                |> Bits.toPowerOf2Minus1
+                |> max 1u
+
+            loop mask sdfs
 
     (*
     let intersection (a:ISignedDistanceField) (b:ISignedDistanceField) =
