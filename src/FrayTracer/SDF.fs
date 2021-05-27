@@ -49,8 +49,8 @@ module SdfBoundary =
             let a = (diff - radius) * irdir
             let b = (diff + radius) * irdir
 
-            let min = let x = Vector3.Min(a, b) in MathF.Max(MathF.Max(x.X, x.Y), x.Z)
-            let max = let x = Vector3.Max(a, b) in MathF.Min(MathF.Min(x.X, x.Y), x.Z)
+            let min = Vector3.min a b |> Vector3.maxDimension
+            let max = Vector3.max a b |> Vector3.minDimension
 
             // box missed
             if min > max then TraceResult.Miss else
@@ -69,8 +69,8 @@ module SdfBoundary =
             let a = (diff - radius) * irdir
             let b = (diff + radius) * irdir
 
-            let min = let x = Vector3.Min(a, b) in MathF.Max(MathF.Max(x.X, x.Y), x.Z)
-            let max = let x = Vector3.Max(a, b) in MathF.Min(MathF.Min(x.X, x.Y), x.Z)
+            let min = Vector3.min a b |> Vector3.maxDimension
+            let max = Vector3.max a b |> Vector3.minDimension
 
             // box missed
             (min <= max) && (max >= ray.Epsilon)
@@ -296,12 +296,12 @@ module Primitive =
         }
 
     let torus (data:Torus) =
-        let normal = data.Normal |> Vector3.normalized
-        let planeD = Vector3.dot data.Center normal
+        let normal = data.Normal |> Vector3.normalize
+        let planeD = -Vector3.dot data.Center normal
 
         create
             (fun (position) ->
-                let distanceToPlane = Vector3.Dot(position, normal) - planeD
+                let distanceToPlane = Vector3.Dot(position, normal) + planeD
                 let distanceToCenter = Vector3.Distance(data.Center, position - (distanceToPlane * normal))
                 let distanceToCircle = distanceToCenter - data.MajorRadius
 
@@ -327,7 +327,7 @@ module Combine =
 
     let union (sdfs:seq<SdfObject>) =
         match sdfs |> Seq.toArray with
-        | [||] -> failwithf "blub"
+        | [||] -> failwith "No SdfObjects given."
         | [|sdf|] -> sdf
         | sdfs ->
             let boundary =
@@ -455,7 +455,7 @@ module Test =
             sdf.Distance (position + epsilon) - sdf.Distance (position - epsilon)
 
         Vector3(f Vector3.UnitX, f Vector3.UnitY, f Vector3.UnitZ)
-        |> Vector3.normalized
+        |> Vector3.normalize
 
     let normalFAST (sdf:SdfObject) (epsilon:float32) (position:Vector3) (distanceAtPosition:float32) =
         Vector3(
@@ -463,7 +463,7 @@ module Test =
             sdf.Distance (position + Vector3.UnitY * epsilon) - distanceAtPosition,
             sdf.Distance (position + Vector3.UnitZ * epsilon) - distanceAtPosition
         )
-        |> Vector3.normalized
+        |> Vector3.normalize
 
     let traceWithDirectionalLigth (epsilon:float32) (length:float32) (sdf:SdfObject) (lightDirection:Vector3) =
         let lightDirection = -lightDirection

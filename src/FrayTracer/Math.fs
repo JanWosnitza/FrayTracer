@@ -18,25 +18,25 @@ module MathF =
     let inline degToRad (x) = x * 0.01745329252f
     let inline radToDeg (x) = x * 57.29577951f
 
-    let inline signi (x:float32) =
-        MathF.Sign(x)
+    let inline sign_i (x:float32) = MathF.Sign(x)
 
-    let inline sign (x:float32) =
-        MathF.Sign(x) |> float32
+    let inline sign (x:float32) = MathF.Sign(x) |> float32
 
-    let inline abs (x:float32) =
-        MathF.Abs(x)
+    let inline abs (x:float32) = MathF.Abs(x)
 
-    let inline min (min:float32) (x:float32) =
-        MathF.Min(min, x)
+    let inline min (min:float32) (x:float32) = MathF.Min(min, x)
 
-    let inline max (max:float32) (x:float32) =
-        MathF.Max(max, x)
+    let inline max (max:float32) (x:float32) = MathF.Max(max, x)
 
-    let inline clamp (min:float32) (max:float32) (x:float32) =
-        MathF.Max(min, MathF.Min(max, x))
+    let inline clamp (min:float32) (max:float32) (x:float32) = MathF.Max(min, MathF.Min(max, x))
 
-    let inline roundToInt (x:float32) = MathF.Round(x) |> int
+    let inline floor (x:float32) = MathF.Floor(x)
+    let inline round (x:float32) = MathF.Round(x)
+    let inline ceiling (x:float32) = MathF.Ceiling(x)
+
+    let inline floor_i (x:float32) = MathF.Floor(x) |> int
+    let inline round_i (x:float32) = MathF.Round(x) |> int
+    let inline ceiling_i (x:float32) = MathF.Ceiling(x) |> int
 
 [<RequireQualifiedAccess>]
 module Vector3 =
@@ -46,8 +46,10 @@ module Vector3 =
 
     let inline dot (v1) (v2) = Vector3.Dot(v1, v2)
 
-    let inline cross (v1) (v2) = Vector3.Cross(v1, v2)
+    let inline normalize (v) = Vector3.Normalize(v)
 
-    let inline normalized (v) = Vector3.Normalize(v)
+    let inline min (v1) (v2) = Vector3.Min(v1, v2)
+    let inline max (v1) (v2) = Vector3.Max(v1, v2)
 
-    let inline scale (x:float32) (v:Vector3) = Vector3.Multiply(v, x)
+    let inline minDimension (v:Vector3) = v.X |> MathF.min v.Y |> MathF.min v.Z
+    let inline maxDimension (v:Vector3) = v.X |> MathF.max v.Y |> MathF.max v.Z

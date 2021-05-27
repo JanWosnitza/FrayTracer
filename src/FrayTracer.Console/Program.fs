@@ -51,7 +51,7 @@ let sdf1 =
     |> SDF.Combine.union
     //|> SDF.Combine.unionSmooth 0.2f
 
-let lightDir = (0f, -1f, 1f) |> Vector3 |> Vector3.normalized
+let lightDir = (0f, -1f, 1f) |> Vector3 |> Vector3.normalize
 let epsilon = 0.01f
 
 let sdf =
@@ -69,8 +69,6 @@ let traced =
 timer.Stop()
 
 printfn $"Time = {timer.Elapsed.TotalSeconds:F1} sec"
-
-//System.forms
 
 traced
 |> Image.normalize

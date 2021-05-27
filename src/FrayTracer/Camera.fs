@@ -29,13 +29,13 @@ module Camera =
         }
 
     let lookAt (camera:LookAt) =
-        let forward = (camera.LookAt - camera.Position) |> Vector3.normalized
-        let right = Vector3.cross camera.Up forward |> Vector3.normalized
+        let forward = (camera.LookAt - camera.Position) |> Vector3.normalize
+        let right = Vector3.Cross(camera.Up, forward) |> Vector3.normalize
         
         {
         Position = camera.Position
         Forward = forward
-        UpScaled = Vector3.cross forward right * camera.Lens.NearPlaneSize
+        UpScaled = Vector3.Cross(forward, right) * camera.Lens.NearPlaneSize
         RightScaled = right * camera.Lens.NearPlaneSize
         }
 
@@ -47,5 +47,5 @@ module Camera =
             camera.Forward
             + (position.X - 0.5f) * camera.RightScaled
             + (position.Y - 0.5f) * camera.UpScaled
-            |> Vector3.normalized
+            |> Vector3.normalize
         }
