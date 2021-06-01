@@ -515,24 +515,25 @@ module Test =
         |> Vector3.normalize
 
     let traceWithDirectionalLigth (epsilon:float32) (length:float32) (sdf:SdfObject) (lightDirection:Vector3) =
-        let lightDirection = -lightDirection
         fun (ray:Ray) ->
         match  trace sdf length ray with
         | ValueSome (position, distance) ->
-            let normal = normalFAST sdf (ray.Epsilon / 1000f) position distance
+            let normal = normalFast sdf (ray.Epsilon / 500f) position distance
             let light =
                 let dot = Vector3.dot normal lightDirection
 
-                if dot <= 0f then
+                if dot >= 0f then
                     0f
                 else
                     // shadow
-                    ray
-                    |> Ray.move distance
-                    |> Ray.setDirection lightDirection
-                    |> trace sdf length //- distance)
+                    {
+                        Origin = position + normal * epsilon
+                        Epsilon = epsilon
+                        Direction = -lightDirection
+                    }
+                    |> trace sdf length
                     |> function
-                        | ValueNone -> dot
+                        | ValueNone -> -dot
                         | ValueSome _ -> 0.0f
 
             0.1f + light * 0.9f
