@@ -219,19 +219,15 @@ type SdfObject =
         Trace : Ray -> float32
     }
 
-module Primitive =
-    let create (distance) (boundary) =
-        {
-            Distance = distance
-            Boundary = boundary
-            Trace =
-                fun ray ->
-                match SdfBoundary.trace boundary ray with
-                | Miss -> Single.PositiveInfinity
-                | Inside -> distance ray.Origin
-                | Hit length -> length
-        }
+module SdfObject =
+    let createTrace (boundary) (distance) =
+        fun ray ->
+        match SdfBoundary.trace boundary ray with
+        | Miss -> Single.PositiveInfinity
+        | Inside -> distance ray.Origin
+        | Hit length -> length
 
+module Primitive =
     [<Struct>]
     type Sphere =
         {
@@ -284,7 +280,11 @@ module Primitive =
             Radius = data.Radius + Vector3.Distance(data.From, data.To) * 0.5f
         }
 
-        create distance boundary
+        {
+            Distance = distance
+            Boundary = boundary
+            Trace = SdfObject.createTrace boundary distance
+        }
 
     [<Struct>]
     type Torus =
@@ -299,15 +299,20 @@ module Primitive =
         let normal = data.Normal |> Vector3.normalize
         let planeD = -Vector3.dot data.Center normal
 
-        create
-            (fun (position) ->
-                let distanceToPlane = Vector3.Dot(position, normal) + planeD
-                let distanceToCenter = Vector3.Distance(data.Center, position - (distanceToPlane * normal))
-                let distanceToCircle = distanceToCenter - data.MajorRadius
+        let distance (position) =
+            let distanceToPlane = Vector3.Dot(position, normal) + planeD
+            let distanceToCenter = Vector3.Distance(data.Center, position - (distanceToPlane * normal))
+            let distanceToCircle = distanceToCenter - data.MajorRadius
 
-                Vector2(distanceToPlane, distanceToCircle).Length() - data.MinorRadius
-            )
-            {Center = data.Center; Radius = data.MajorRadius + data.MinorRadius}
+            Vector2(distanceToPlane, distanceToCircle).Length() - data.MinorRadius
+
+        let boundary :SdfBoundary = {Center = data.Center; Radius = data.MajorRadius + data.MinorRadius}
+
+        {
+            Distance = distance
+            Boundary = boundary
+            Trace = SdfObject.createTrace boundary distance
+        }
 
 module Combine =
     (* tree combine
@@ -498,7 +503,7 @@ module Test =
             else
                 trace sdf (length - distance) (ray |> Ray.move distance)
 
-    let normal (epsilon:float32) (sdf:SdfObject) (position:Vector3) =
+    let normal (sdf:SdfObject) (epsilon:float32) (position:Vector3) =
         let inline f (dimension:Vector3) =
             let epsilon = dimension * epsilon
             sdf.Distance (position + epsilon) - sdf.Distance (position - epsilon)
@@ -506,7 +511,7 @@ module Test =
         Vector3(f Vector3.UnitX, f Vector3.UnitY, f Vector3.UnitZ)
         |> Vector3.normalize
 
-    let normalFAST (sdf:SdfObject) (epsilon:float32) (position:Vector3) (distanceAtPosition:float32) =
+    let normalFast (sdf:SdfObject) (epsilon:float32) (position:Vector3) (distanceAtPosition:float32) =
         Vector3(
             sdf.Distance (position + Vector3.UnitX * epsilon) - distanceAtPosition,
             sdf.Distance (position + Vector3.UnitY * epsilon) - distanceAtPosition,
