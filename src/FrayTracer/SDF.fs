@@ -221,11 +221,13 @@ type SdfObject =
 
 module SdfObject =
     let createTrace (boundary) (distance) =
-        fun ray ->
-        match SdfBoundary.trace boundary ray with
-        | Miss -> Single.PositiveInfinity
-        | Inside -> distance ray.Origin
-        | Hit length -> length
+        let trace (ray) =
+            match SdfBoundary.trace boundary ray with
+            | Miss -> Single.PositiveInfinity
+            | Inside -> distance ray.Origin
+            | Hit length -> length
+
+        trace
 
 module Primitive =
     [<Struct>]
@@ -307,6 +309,72 @@ module Primitive =
             Vector2(distanceToPlane, distanceToCircle).Length() - data.MinorRadius
 
         let boundary :SdfBoundary = {Center = data.Center; Radius = data.MajorRadius + data.MinorRadius}
+
+        {
+            Distance = distance
+            Boundary = boundary
+            Trace = SdfObject.createTrace boundary distance
+        }
+
+    [<Struct>]
+    type Triangle =
+        {
+            v1 : Vector3
+            v2 : Vector3
+            v3 : Vector3
+            Radius : float32
+        }
+
+    let triangle (data:Triangle) =
+        // optimized version of https://iquilezles.org/www/articles/triangledistance/triangledistance.htm
+        let v21 = data.v2 - data.v1
+        let v21' = v21 |> Vector3.inverseLength
+        let v32 = data.v3 - data.v2
+        let v32' = v32 |> Vector3.inverseLength
+        let v13 = data.v1 - data.v3
+        let v13' = v13 |> Vector3.inverseLength
+        let nor = Vector3.Cross(v21, v13) |> Vector3.normalize
+        let n21 = Vector3.Cross(v21, nor) |> Vector3.normalize
+        let n32 = Vector3.Cross(v32, nor) |> Vector3.normalize
+        let n13 = Vector3.Cross(v13, nor) |> Vector3.normalize
+
+        let distance (position) =
+            let p1 = position - data.v1
+            let p2 = position - data.v2
+            let p3 = position - data.v3
+
+            let distance =
+                // inside/outside test
+                if
+                    ((Vector3.dot n21 p1 |> MathF.sign_i)
+                    + (Vector3.dot n32 p2 |> MathF.sign_i)
+                    + (Vector3.dot n13 p3 |> MathF.sign_i)) < 2
+                then
+                    // 3 edges
+                    let d21 = p1 |> Vector3.dot v21' |> MathF.clamp01 |> Vector3.scale v21 |> Vector3.distance2 p1
+                    let d32 = p2 |> Vector3.dot v32' |> MathF.clamp01 |> Vector3.scale v32 |> Vector3.distance2 p2
+                    let d13 = p3 |> Vector3.dot v13' |> MathF.clamp01 |> Vector3.scale v13 |> Vector3.distance2 p3
+                    (d21 |> MathF.min d32 |> MathF.min d13)
+                    |> MathF.sqrt
+                else
+                    // 1 face
+                    Vector3.Dot(nor, p1)
+                    |> MathF.abs
+
+            distance - data.Radius
+
+        let boundary :SdfBoundary =
+            {
+            Center =
+                let areaInv = 0.5f / Vector3.Cross(data.v1 - data.v2, data.v2 - data.v3).LengthSquared()
+                let w1 = (data.v2 - data.v3).LengthSquared() * Vector3.Dot(data.v1 - data.v2, data.v1 - data.v3) * areaInv
+                let w2 = (data.v1 - data.v3).LengthSquared() * Vector3.Dot(data.v2 - data.v1, data.v2 - data.v3) * areaInv
+                let w3 = 1f - w1 - w2 // (data.v1 - data.v2).LengthSquared() * Vector3.Dot(data.v3 - data.v1, data.v3 - data.v2) * areaInv
+                w1 * data.v1 + w2 * data.v2 + w3 * data.v3
+            Radius =
+                v21.Length() * v32.Length() * v13.Length() / 2f / Vector3.Cross(v21,v32).Length()
+                + data.Radius
+            }
 
         {
             Distance = distance

@@ -10,7 +10,7 @@ let shellOpen (path) =
 // MAIN
 
 // 19 36 78 86
-Random.setSeed 78 //86
+Random.setSeed 1 //86
 
 let camera =
     Camera.lookAt {
@@ -46,8 +46,17 @@ let randomTorus () =
         MinorRadius = Random.uniform 0.1f 0.3f
     }
 
+let randomTriangle () =
+    let v1 = Random.pointInBall () * 5.0f
+    SDF.Primitive.triangle {
+        v1 = v1
+        v2 = v1 + Random.pointOnSphere () * Random.uniform 0.5f 2.0f
+        v3 = v1 + Random.pointOnSphere () * Random.uniform 0.5f 2.0f
+        Radius = Random.uniform 0.1f 0.5f
+    }
+
 let sdf1 =
-    List.init 50 (fun _ -> randomTorus ())
+    List.init 50 (fun _ -> randomTriangle ())
     |> SDF.Combine.union
     //|> SDF.Combine.unionSmooth 0.2f
 

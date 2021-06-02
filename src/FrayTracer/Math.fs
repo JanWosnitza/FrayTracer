@@ -42,6 +42,7 @@ module MathF =
     let inline max (max:float32) (x:float32) = MathF.Max(max, x)
 
     let inline clamp (min:float32) (max:float32) (x:float32) = MathF.Max(min, MathF.Min(max, x))
+    let inline clamp01 (x:float32) = MathF.Max(0f, MathF.Min(1f, x))
 
     let inline floor (x:float32) = MathF.Floor(x)
     let inline round (x:float32) = MathF.Round(x)
@@ -54,8 +55,14 @@ module MathF =
 [<RequireQualifiedAccess>]
 module Vector3 =
     let inline length (v:Vector3) = v.Length()
-
     let inline length2 (v:Vector3) = v.LengthSquared()
+
+    let inline distance (v1:Vector3) (v2:Vector3) = Vector3.Distance(v1, v2)
+    let inline distance2 (v1:Vector3) (v2:Vector3) = Vector3.DistanceSquared(v1, v2)
+
+    let inline inverseLength (v:Vector3) = v / v.LengthSquared()
+
+    let inline scale (v:Vector3) (scale:float32) = v * scale
 
     let inline dot (v1) (v2) = Vector3.Dot(v1, v2)
 
