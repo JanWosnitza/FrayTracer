@@ -169,45 +169,6 @@ module SdfBoundary =
                 TraceResult.Inside
         //*)
 
-        (* http://kylehalladay.com/blog/tutorial/math/2013/12/24/Ray-Sphere-Intersection.html
-        let traceTest (boundary : SdfBoundary) (ray : Ray) =
-            let radius2 = boundary.Radius * boundary.Radius
-
-            //solve for tc
-            let L = boundary.Center - ray.Origin;
-            let tc = Vector3.Dot(L, ray.Direction);
-            if tc < 0f then false else
-
-            let d2 = tc * tc - L.LengthSquared()
-            d2 < radius2
-
-        let trace (boundary : SdfBoundary) (ray : Ray) =
-            let radius2 = boundary.Radius * boundary.Radius
-
-            //solve for tc
-            let diff = boundary.Center - ray.Origin
-            let diffLength2 = diff.LengthSquared()
-
-            if diffLength2 < radius2 then TraceResult.Inside else
-
-            let tc = Vector3.Dot(diff, ray.Direction)
-            if tc < 0f then TraceResult.Miss else
-
-            let d2 = tc * tc - diffLength2
-
-            if d2 > radius2 then TraceResult.Miss else
-
-            //solve for t1c
-            let t1c = MathF.Sqrt(radius2 - d2)
-
-            //solve for intersection points
-            let t1 = tc - t1c
-            if t1 < ray.Epsilon then
-                TraceResult.Inside
-            else
-                TraceResult.Hit t1
-        //*)
-    
     open Sphere
     let inline traceTest (boundary : SdfBoundary) (ray : Ray) = traceTest boundary ray
     let inline trace (boundary : SdfBoundary) (ray : Ray) = trace boundary ray
@@ -383,21 +344,6 @@ module Primitive =
         }
 
 module Combine =
-    (* tree combine
-        let rec loop =
-            function
-            | [|a|] -> a
-            | [|a;b|] -> combine a b
-            | boundaries ->
-                let _as, _bs =
-                    boundaries
-                    |> Array.splitAt ((boundaries.Length + 1) / 2)
-                combine (loop _as) (loop _bs)
-
-        // this might results a larger boundary than strictly necessary
-        loop boundaries
-    *)
-
     let unionSimple (sdfs:seq<SdfObject>) =
         match sdfs |> Seq.toArray with
         | [||] -> failwith "No SdfObjects given."
@@ -479,6 +425,31 @@ module Combine =
 
             loop mask sdfs
 
+    let unionSmooth (strength:float32) (sdfs:seq<SdfObject>) =
+        match sdfs |> Seq.toArray with
+        | [||] -> failwithf "blub"
+        | [|sdf|] -> sdf
+        | sdfs ->
+            let strengthInverse = -1f / strength
+
+            let distance (position) =
+                let mutable sum = 0f
+                for i = 0 to sdfs.Length - 1 do
+                    let distance = sdfs.[i].Distance position
+                    sum <- sum + MathF.Exp(strengthInverse * distance)
+
+                -MathF.Log(sum) * strength
+
+            let boundary =
+                sdfs
+                |> Seq.map (fun x -> x.Boundary)
+                |> SdfBoundary.combineMany
+            {
+                Distance = distance
+                Boundary = boundary
+                Trace = SdfObject.createTrace boundary distance
+            }
+
     (*
     let intersection (a:ISignedDistanceField) (b:ISignedDistanceField) =
         {new ISignedDistanceField with
@@ -497,68 +468,7 @@ module Combine =
                     -b.GetDistance(position)
                 )
         }
-
-    let unionSmooth (strength:float32) (sdfs:seq<ISignedDistanceField>) =
-        match sdfs |> Seq.toArray with
-        | [||] -> failwithf "blub"
-        | [|sdf|] -> sdf
-        | sdfs ->
-            let strengthInverse = 1f / strength
-
-            {new ISignedDistanceField with
-                member this.GetDistance(position) =
-                    let mutable sum = 0f
-                    for i = 0 to sdfs.Length - 1 do
-                        let distance = sdfs.[i].GetDistance(position)
-                        sum <- sum + MathF.Exp(-strengthInverse * distance)
-
-                    -MathF.Log(sum) * strength
-            }
-    *)
-
-(*module Performance =
-    let cache (width:float32) (epsilon:float32) (sdf:SdfObject) =
-        let halfDiagonal = sqrt (width * width * 3f) * 0.5f
-        let cachedDistances = System.Collections.Concurrent.ConcurrentDictionary<struct (int * int * int), float32>()
-        {new ISignedDistanceField with
-            member this.GetDistance(position) =
-                let width = width
-                let x = MathF.roundToInt (position.X / width)
-                let y = MathF.roundToInt (position.Y / width)
-                let z = MathF.roundToInt (position.Z / width)
-
-                let optDistance =
-                    let pos = struct (x, y, z)
-                    match cachedDistances.TryGetValue(pos) with
-                    | true, optDistance -> optDistance
-                    | _ ->
-                        let distance =
-                            sdf.GetDistance(Vector3(float32 x * width, float32 y * width, float32 z * width))
-                            - halfDiagonal
-                        
-                        let optDistance =
-                            if distance > epsilon
-                            then distance
-                            else Single.NaN
-                        cachedDistances.TryAdd(pos, optDistance) |> ignore
-                        optDistance
-
-                if Single.IsNaN(optDistance) then
-                    sdf.GetDistance(position)
-                else
-                    optDistance
-        }
-
-    let measure (stopwatch:System.Diagnostics.Stopwatch) (sdf:ISignedDistanceField) =
-        {new ISignedDistanceField with
-            member this.GetDistance(position) =
-                stopwatch.Start()
-                try
-                    sdf.GetDistance(position)
-                finally
-                    stopwatch.Stop()
-        }
-*)
+    //*)
 
 module Test =
     let rec trace (sdf:SdfObject) (length:float32) (ray:Ray) =

@@ -10,7 +10,7 @@ let shellOpen (path) =
 // MAIN
 
 // 19 36 78 86
-Random.setSeed 1 //86
+Random.setSeed 78 //86
 
 let camera =
     Camera.lookAt {
@@ -56,8 +56,8 @@ let randomTriangle () =
     }
 
 let sdf1 =
-    List.init 50 (fun _ -> randomTriangle ())
-    |> SDF.Combine.union
+    List.init 50 (fun _ -> randomTorus ())
+    |> SDF.Combine.unionSmooth 0.2f
     //|> SDF.Combine.unionSmooth 0.2f
 
 let lightDir = (0f, -1f, 1f) |> Vector3 |> Vector3.normalize
