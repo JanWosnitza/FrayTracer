@@ -56,9 +56,17 @@ let randomTriangle () =
     }
 
 let sdf1 =
-    List.init 50 (fun _ -> randomTorus ())
-    |> SDF.Combine.unionSmooth 0.2f
-    //|> SDF.Combine.unionSmooth 0.2f
+    SDF.Operator.subtraction
+        (SDF.Operator.intersection [
+            SDF.Operator.union [
+                for i = 1 to 1000 do yield randomTorus ()
+            ]
+
+            SDF.Primitive.sphere {Center = Vector3(0f,0f,0f); Radius = 4f}
+        ])
+        [
+            //SDF.Primitive.sphere {Center = Vector3(0f,1f,-2f); Radius = 3f}
+        ]
 
 let lightDir = (0f, -1f, 1f) |> Vector3 |> Vector3.normalize
 let epsilon = 0.01f

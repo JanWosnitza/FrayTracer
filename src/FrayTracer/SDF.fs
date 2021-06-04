@@ -18,7 +18,7 @@ type TraceResult =
     | Inside
 
 module SdfBoundary =
-    let combine (a : SdfBoundary) (b : SdfBoundary) =
+    let union (a : SdfBoundary) (b : SdfBoundary) =
         let diff = b.Center - a.Center
         let distance = diff.Length()
 
@@ -35,10 +35,46 @@ module SdfBoundary =
                 Radius = Vector3.Distance(a', b') * 0.5f
             }
 
-    let combineMany (boundaries : seq<SdfBoundary>) =
+    let unionMany (boundaries : seq<SdfBoundary>) =
         // this might results a larger boundary than strictly necessary
         boundaries
-        |> Seq.reduce combine
+        |> Seq.reduce union
+
+    let intersection (a : SdfBoundary) (b : SdfBoundary) =
+        let diff = b.Center - a.Center
+        let distance = diff.Length()
+
+        if distance + b.Radius <= a.Radius then
+            b
+        elif distance + a.Radius <= b.Radius then
+            a
+        else
+            let dir = diff / distance
+            let a' = a.Center + dir * a.Radius
+            let b' = b.Center - dir * b.Radius
+            {
+                Center = (a' + b') * 0.5f
+                Radius =
+                    let d2 = distance * distance
+                    let aR2 = a.Radius * a.Radius
+                    let bR2 = b.Radius * b.Radius
+                    // https://mathworld.wolfram.com/Sphere-SphereIntersection.html
+                    MathF.Sqrt(4f * d2 * aR2 - (d2 - bR2 + aR2)) / (2f * distance)
+            }
+
+    let intersectionMany (boundaries : seq<SdfBoundary>) =
+        // this might results a larger boundary than strictly necessary
+        boundaries
+        |> Seq.reduce union
+
+    let isInside (x:SdfBoundary) (position:Vector3) = Vector3.DistanceSquared(x.Center, position) < x.Radius * x.Radius
+
+    let getMinMaxDistance (x:SdfBoundary) (position:Vector3) =
+        let distance = Vector3.Distance(x.Center, position)
+        struct (distance - x.Radius, distance + x.Radius)
+
+    let getMinDistance (x:SdfBoundary) (position:Vector3) = Vector3.Distance(x.Center, position) - x.Radius
+    let getMaxDistance (x:SdfBoundary) (position:Vector3) = Vector3.Distance(x.Center, position) + x.Radius
 
     module AABB =
         let trace (boundary : SdfBoundary) (ray : Ray) =
@@ -190,6 +226,13 @@ module SdfObject =
 
         trace
 
+    let tryDistance (sdf:SdfObject) (position:Vector3) =
+        if SdfBoundary.isInside sdf.Boundary position then
+            sdf.Distance position
+            |> ValueSome
+        else
+            ValueNone
+
 module Primitive =
     [<Struct>]
     type Sphere =
@@ -221,20 +264,20 @@ module Primitive =
         }
 
     let capsule (data:Capsule) =
-        let dir = data.To - data.From
-        let dirInv = dir / dir.LengthSquared()
+        let dir = (data.To - data.From) |> Vector3.normalize
 
         let distance (position) =
-            let diff = position - data.From
-            let t = Vector3.Dot(diff, dirInv)
-
             let distance =
+                let diff = position - data.From
+                let t = Vector3.Dot(diff, dir)
                 if t <= 0f then
                     diff.Length()
                 elif t >= 1f then
                     Vector3.Distance(diff, dir)
                 else
                     Vector3.Distance(diff, dir * t)
+
+                //Vector3.Distance(diff, dir * MathF.clamp01 t)
                 
             distance - data.Radius
 
@@ -343,8 +386,8 @@ module Primitive =
             Trace = SdfObject.createTrace boundary distance
         }
 
-module Combine =
-    let unionSimple (sdfs:seq<SdfObject>) =
+module Operator =
+    let union (sdfs:seq<SdfObject>) =
         match sdfs |> Seq.toArray with
         | [||] -> failwith "No SdfObjects given."
         | [|sdf|] -> sdf
@@ -352,31 +395,77 @@ module Combine =
             let boundary =
                 sdfs
                 |> Seq.map (fun x -> x.Boundary)
-                |> SdfBoundary.combineMany
+                |> SdfBoundary.unionMany
+
+            sdfs
+            |> Array.sortInPlaceBy (fun sdf -> SdfBoundary.getMinDistance sdf.Boundary boundary.Center)
+
+            let distance (position) =
+                let mutable min = Single.PositiveInfinity
+
+                for i = 0 to sdfs.Length - 1 do
+                    let sdf = sdfs.[i]
+                    if min > SdfBoundary.getMinDistance sdf.Boundary position then
+                        min <- sdf.Distance(position) |> MathF.min min
+                min
 
             {
-                Distance =
-                    fun (position) ->
-                    let mutable min = Single.PositiveInfinity
-                    for i = 0 to sdfs.Length - 1 do
-                        let distance = sdfs.[i].Distance(position)
-                        min <- MathF.Min(min, distance)
-                    min
-
+                Distance = distance
                 Boundary = boundary
                 Trace =
                     fun (ray) ->
-                    if not <| SdfBoundary.traceTest boundary ray then
-                        Single.PositiveInfinity
-                    else
-                        let mutable min = Single.PositiveInfinity
-                        for i = 0 to sdfs.Length - 1 do
-                            let distance = sdfs.[i].Trace(ray)
-                            min <- MathF.Min(min, distance)
-                        min
+                    if not <| SdfBoundary.traceTest boundary ray then Single.PositiveInfinity else
+
+                    let mutable min = Single.PositiveInfinity
+                    for i = 0 to sdfs.Length - 1 do
+                        let sdf = sdfs.[i]
+                        if min > SdfBoundary.getMinDistance sdf.Boundary ray.Origin then
+                            min <- sdf.Trace(ray) |> MathF.min min
+                    min
             }
 
-    let union (sdfs:seq<SdfObject>) =
+    let subtraction (a:SdfObject) (sdfs:seq<SdfObject>) =
+        match sdfs |> Seq.toArray with
+        | [||] -> a
+        | sdfs ->
+            let distance (position) =
+                let mutable max = a.Distance position
+                for i = 0 to sdfs.Length - 1 do
+                    let obj = sdfs.[i]
+                    if max < -SdfBoundary.getMinDistance obj.Boundary position then
+                        max <- -(obj.Distance position) |> MathF.max max
+                max
+
+            let boundary = a.Boundary
+
+            {
+                Distance = distance
+                Boundary = boundary
+                Trace = SdfObject.createTrace boundary distance
+            }
+
+    let intersection (sdfs:seq<SdfObject>) =
+        match sdfs |> Seq.toArray with
+        | [||] -> failwith "No SdfObjects given."
+        | [|sdf|] -> sdf
+        | sdfs ->
+            let distance (position) =
+                let mutable max = Single.NegativeInfinity
+                for i = 0 to sdfs.Length - 1 do
+                    let obj = sdfs.[i]
+                    if max < SdfBoundary.getMaxDistance obj.Boundary position then
+                        max <- obj.Distance position |> MathF.max max
+                max
+
+            let boundary = sdfs |> Seq.map (fun x -> x.Boundary) |> SdfBoundary.intersectionMany
+
+            {
+                Distance = distance
+                Boundary = boundary
+                Trace = SdfObject.createTrace boundary distance
+            }
+
+    let unionTree (sdfs:seq<SdfObject>) =
         match sdfs |> Seq.toList with
         | [] -> failwith "No SdfObjects given."
         | [sdf] -> sdf
@@ -400,7 +489,7 @@ module Combine =
                 | [sdf] -> sdf
                 | sdfs ->
                     // fallback, due to possible floating point inprecision
-                    if mask = UInt32.MaxValue then unionSimple sdfs else
+                    if mask = UInt32.MaxValue then union sdfs else
 
                     let small, big = sdfs |> List.partition (fun o -> toInt o.Boundary.Radius <= mask)
 
@@ -411,7 +500,7 @@ module Combine =
                             let mask = ~~~mask
                             struct (toInt p.X &&& mask, toInt p.Y &&& mask, toInt p.Z &&& mask)
                         )
-                        |> List.map (fun (_, sdfs) -> unionSimple sdfs)
+                        |> List.map (fun (_, sdfs) -> union sdfs)
 
                     loop ((mask <<< 1) + 1u) (unioned @ big)
 
@@ -443,32 +532,12 @@ module Combine =
             let boundary =
                 sdfs
                 |> Seq.map (fun x -> x.Boundary)
-                |> SdfBoundary.combineMany
+                |> SdfBoundary.unionMany
             {
                 Distance = distance
                 Boundary = boundary
                 Trace = SdfObject.createTrace boundary distance
             }
-
-    (*
-    let intersection (a:ISignedDistanceField) (b:ISignedDistanceField) =
-        {new ISignedDistanceField with
-            member this.GetDistance(position) =
-                MathF.Max(
-                    a.GetDistance(position),
-                    b.GetDistance(position)
-                )
-        }
-
-    let subtraction (a:ISignedDistanceField) (b:ISignedDistanceField) =
-        {new ISignedDistanceField with
-            member this.GetDistance(position) =
-                MathF.Max(
-                    a.GetDistance(position),
-                    -b.GetDistance(position)
-                )
-        }
-    //*)
 
 module Test =
     let rec trace (sdf:SdfObject) (length:float32) (ray:Ray) =
