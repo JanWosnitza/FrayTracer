@@ -1,9 +1,7 @@
 ﻿namespace FrayTracer
 
 open System
-
-type Vector2 = System.Numerics.Vector2
-type Vector3 = System.Numerics.Vector3
+open System.Numerics
 
 [<RequireQualifiedAccess>]
 module Bits =

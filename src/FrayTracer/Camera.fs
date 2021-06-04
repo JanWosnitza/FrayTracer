@@ -1,22 +1,24 @@
 ﻿namespace FrayTracer
 
+open System.Numerics
+
 type Lens =
     {
-    NearPlaneSize : float32
+        NearPlaneSize : float32
     }
 
 module Lens =
     let create (fieldOfView) =
         {
-        NearPlaneSize = sin (fieldOfView * 0.5f)
+            NearPlaneSize = sin (fieldOfView * 0.5f)
         }
 
 type Camera =
     {
-    Position : Vector3
-    Forward : Vector3
-    UpScaled : Vector3
-    RightScaled : Vector3
+        Position : Vector3
+        Forward : Vector3
+        UpScaled : Vector3
+        RightScaled : Vector3
     }
 
 module Camera =

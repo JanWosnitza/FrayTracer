@@ -5,8 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Math.fs" />
-    <Compile Include="Random.fs" />
     <Compile Include="Array2D.fs" />
     <Compile Include="Spline.fs" />
     <Compile Include="Workflow.fs" />
@@ -14,7 +12,14 @@
     <Compile Include="Material.fs" />
     <Compile Include="Materials.fs" />
     <Compile Include="Noise.fs" />
-    <Compile Include="SDF.fs" />
+    <Compile Include="__OldAbove__.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="Math.fs" />
+    <Compile Include="Random.fs" />
+    <Compile Include="Ray.fs" />
+    <Compile Include="SdfBoundary.fs" />
+    <Compile Include="SdfForm.fs" />
+    <Compile Include="Test.fs" />
     <Compile Include="Camera.fs" />
     <Compile Include="Image.fs" />
   </ItemGroup>

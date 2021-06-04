@@ -3,6 +3,7 @@
 module FrayTracer.Random
 
 open System
+open System.Numerics
 
 type Random with
     member rng.range_01 () = rng.NextDouble() |> float32

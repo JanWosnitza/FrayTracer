@@ -1,5 +1,6 @@
 ﻿namespace FrayTracer
 
+open System.Numerics
 open System.Runtime.InteropServices
 open System.Drawing
 open System.IO
