@@ -19,8 +19,9 @@
     <Compile Include="Ray.fs" />
     <Compile Include="SdfBoundary.fs" />
     <Compile Include="SdfForm.fs" />
-    <Compile Include="Test.fs" />
     <Compile Include="Camera.fs" />
+    <Compile Include="FColor.fs" />
+    <Compile Include="Test.fs" />
     <Compile Include="Image.fs" />
   </ItemGroup>
 

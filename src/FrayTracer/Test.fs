@@ -29,7 +29,7 @@ let normalFast (sdf:SdfForm) (epsilon:float32) (position:Vector3) (distanceAtPos
     )
     |> Vector3.normalize
 
-let traceWithDirectionalLigth (epsilon:float32) (length:float32) (sdf:SdfForm) (lightDirection:Vector3) =
+let traceWithDirectionalLigth (epsilon:float32) (length:float32) (backgroundColor:FColor) (color:FColor) (lightDirection:Vector3) (sdf:SdfForm) =
     fun (ray:Ray) ->
     match  trace sdf length ray with
     | ValueSome (position, distance) ->
@@ -51,5 +51,5 @@ let traceWithDirectionalLigth (epsilon:float32) (length:float32) (sdf:SdfForm) (
                     | ValueNone -> -dot
                     | ValueSome _ -> 0.0f
 
-        0.1f + light * 0.9f
-    | ValueNone -> 0.0f
+        color * (0.1f + light * 0.9f)
+    | ValueNone -> backgroundColor

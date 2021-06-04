@@ -71,6 +71,8 @@ let sdf1 =
 
 let lightDir = (0f, -1f, 1f) |> Vector3 |> Vector3.normalize
 let epsilon = 0.01f
+let backgroundColor = FColor.ofRGB 0f 0f 0f
+let objectColor = FColor.ofRGB 0f 0f 1f
 
 let sdf =
     sdf1
@@ -81,8 +83,8 @@ printfn $"Rendering..."
 
 let timer = Stopwatch.StartNew()
 let traced =
-    (sdf, lightDir)
-    ||> Test.traceWithDirectionalLigth epsilon 1000f
+    sdf
+    |> Test.traceWithDirectionalLigth epsilon 1000f backgroundColor objectColor lightDir
     |> Image.render imageSize camera epsilon
 timer.Stop()
 
@@ -91,7 +93,7 @@ printfn $"Time = {timer.Elapsed.TotalSeconds:F1} sec"
 traced
 |> Image.normalize
 |> Image.gamma 2.2f
-|> Image.dither rng (1.0f / 256.0f)
+|> Image.toColors rng
 |> Image.saveBitmap "test"
 |> shellOpen
 |> ignore

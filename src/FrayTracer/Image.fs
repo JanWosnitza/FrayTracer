@@ -23,7 +23,7 @@ module ImageSize =
         )
 
 module Image =
-    let render (imageSize:ImageSize) (camera) (epsilon:float32) (trace:Ray -> float32) =
+    let render (imageSize:ImageSize) (camera) (epsilon:float32) (trace:Ray -> FColor) =
         let getUniformPixelPos = ImageSize.getUniformPixelPos imageSize
         Array2D.Parallel.init imageSize.X imageSize.Y (fun x y ->
             let ray =
@@ -34,27 +34,30 @@ module Image =
             trace ray
         )
 
-    let normalize (image:float32[,]) =
-        let max = Array2D.max image
+    let normalize (image:FColor[,]) =
+        let max =
+            image
+            |> Array2D.toSeq
+            |> Seq.map (FColor.getMaxColor)
+            |> Seq.max
+
         image
         |> Array2D.map (fun x -> x / max)
 
-    let gamma (gamma:float32) (image:float32[,]) =
-        let power = 1.0f / gamma
+    let gamma (gamma:float32) (image:FColor[,]) =
+        let gammaInv = 1.0f / gamma
         image
-        |> Array2D.map (fun x -> x ** power)
+        |> Array2D.map (FColor.gammaInverse gammaInv)
 
-    let dither (rng:System.Random) (max:float32) (image:float32[,]) =
-        let half = max * 0.5f
+    let toColors (rng:System.Random) (image:FColor[,]) =
         image
-        |> Array2D.map (fun x -> x + rng.range -half half)
+        |> Array2D.map (FColor.toColor rng)
 
-    let saveBitmap (path:string) (image:float32[,]) =
+    let saveBitmap (path:string) (image:Color[,]) =
         let buffer =
             image
             |> Array2D.toSeq
-            |> Seq.map (fun x -> x * 255.0f |> round |> uint8)
-            |> Seq.collect (Seq.replicate 3)
+            |> Seq.collect (fun color -> [|color.B; color.G; color.R|])
             |> Seq.toArray
 
         use bm =
