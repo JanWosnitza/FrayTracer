@@ -43,10 +43,10 @@ module Image =
         image
         |> Array2D.map (fun x -> x ** power)
 
-    let dither (max:float32) (image:float32[,]) =
+    let dither (rng:System.Random) (max:float32) (image:float32[,]) =
         let half = max * 0.5f
         image
-        |> Array2D.map (fun x -> x + Random.uniform_11 () * half)
+        |> Array2D.map (fun x -> x + rng.range -half half)
 
     let saveBitmap (path:string) (image:float32[,]) =
         let buffer =

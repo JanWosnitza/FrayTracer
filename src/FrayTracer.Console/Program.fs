@@ -10,7 +10,7 @@ let shellOpen (path) =
 // MAIN
 
 // 19 36 78 86
-Random.setSeed 78 //86
+let rng = System.Random(78) //86
 
 let camera =
     Camera.lookAt {
@@ -26,33 +26,33 @@ let imageSize = {X = size; Y = size}
 
 let randomSphere () =
     SDF.Primitive.sphere {
-        Center = Random.pointInBall () * 5.0f
-        Radius = Random.uniform 0.3f 1.0f
+        Center = rng.pointInBall 4.0f
+        Radius = rng.range 0.3f 1.0f
     }
 
 let randomCapsule () =
-    let center = Random.pointInBall () * 5.0f
+    let center = rng.pointInBall 4.0f
     SDF.Primitive.capsule {
         From = center
-        To = center + Random.pointOnSphere () * Random.uniform 0.5f 2.0f
-        Radius = Random.uniform 0.1f 0.3f
+        To = center + rng.pointOnSphere (rng.range 0.5f 2.0f)
+        Radius = rng.range 0.1f 0.3f
     }
 
 let randomTorus () =
     SDF.Primitive.torus {
-        Center = Random.pointInBall () * 5.0f
-        Normal = Random.pointOnSphere ()
-        MajorRadius = Random.uniform 0.5f 1.0f
-        MinorRadius = Random.uniform 0.1f 0.3f
+        Center = rng.pointInBall 4.0f
+        Normal = rng.pointOnSphere 1f
+        MajorRadius = rng.range 0.1f 0.4f
+        MinorRadius = rng.range 0.05f 0.15f
     }
 
 let randomTriangle () =
-    let v1 = Random.pointInBall () * 5.0f
+    let v1 = rng.pointInBall 4.0f
     SDF.Primitive.triangle {
         v1 = v1
-        v2 = v1 + Random.pointOnSphere () * Random.uniform 0.5f 2.0f
-        v3 = v1 + Random.pointOnSphere () * Random.uniform 0.5f 2.0f
-        Radius = Random.uniform 0.1f 0.5f
+        v2 = v1 + rng.pointOnSphere (rng.range 0.5f 2.0f)
+        v3 = v1 + rng.pointOnSphere (rng.range 0.5f 2.0f)
+        Radius = rng.range 0.1f 0.5f
     }
 
 let sdf1 =
@@ -82,7 +82,7 @@ printfn $"Time = {timer.Elapsed.TotalSeconds:F1} sec"
 traced
 |> Image.normalize
 |> Image.gamma 2.2f
-|> Image.dither (1.0f / 256.0f)
+|> Image.dither rng (1.0f / 256.0f)
 |> Image.saveBitmap "test"
 |> shellOpen
 |> ignore
