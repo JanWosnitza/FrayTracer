@@ -159,7 +159,7 @@ module SdfBoundary =
 
                 let t2 = b + t
                 // behind sphere
-                if t2 < -ray.Epsilon then TraceResult.Miss else
+                if t2 < 0f then TraceResult.Miss else
 
                 let t1 = b - t
                 // hitting
