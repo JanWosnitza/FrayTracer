@@ -43,7 +43,7 @@ let randomTorus () =
         Center = rng.pointInBall 4.0f
         Normal = rng.pointOnSphere 1f
         MajorRadius = rng.range 0.1f 0.4f
-        MinorRadius = rng.range 0.05f 0.15f
+        MinorRadius = rng.range 0.1f 0.3f
     }
 
 let randomTriangle () =
@@ -59,7 +59,7 @@ let sdf1 =
     SDF.Operator.subtraction
         (SDF.Operator.intersection [
             SDF.Operator.union [
-                for i = 1 to 1000 do yield randomTorus ()
+                for i = 1 to 100 do yield randomTorus ()
             ]
 
             SDF.Primitive.sphere {Center = Vector3(0f,0f,0f); Radius = 4f}

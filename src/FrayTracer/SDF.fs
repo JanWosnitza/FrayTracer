@@ -400,17 +400,16 @@ module Operator =
             sdfs
             |> Array.sortInPlaceBy (fun sdf -> SdfBoundary.getMinDistance sdf.Boundary boundary.Center)
 
-            let distance (position) =
-                let mutable min = Single.PositiveInfinity
-
-                for i = 0 to sdfs.Length - 1 do
-                    let sdf = sdfs.[i]
-                    if min > SdfBoundary.getMinDistance sdf.Boundary position then
-                        min <- sdf.Distance(position) |> MathF.min min
-                min
-
             {
-                Distance = distance
+                Distance =
+                    fun (position) ->
+                    let mutable min = Single.PositiveInfinity
+
+                    for i = 0 to sdfs.Length - 1 do
+                        let sdf = sdfs.[i]
+                        if min > SdfBoundary.getMinDistance sdf.Boundary position then
+                            min <- sdf.Distance(position) |> MathF.min min
+                    min
                 Boundary = boundary
                 Trace =
                     fun (ray) ->
