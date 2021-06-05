@@ -75,14 +75,14 @@ module AABB =
         let max = Vector3.max a b |> Vector3.minDimension
 
         // box missed
-        if min > max then TraceResult.Miss else
+        if min > max then SdfBoundaryTraceResult.Miss else
 
         // behind box
-        if max < -ray.Epsilon then TraceResult.Miss else
+        if max < -ray.Epsilon then SdfBoundaryTraceResult.Miss else
 
-        if min <= ray.Epsilon then TraceResult.Inside else
+        if min <= ray.Epsilon then SdfBoundaryTraceResult.Inside else
 
-        TraceResult.Hit min
+        SdfBoundaryTraceResult.Hit min
 
     let traceTest (boundary : SdfBoundary) (ray : Ray) =
         let irdir = Vector3.One / ray.Direction
@@ -167,28 +167,28 @@ module Sphere =
         let b = Vector3.Dot(co, ray.Direction)
 
         // more than radius behind sphere, cannot hit or be inside
-        if boundary.Radius <= b then TraceResult.Miss else
+        if boundary.Radius <= b then SdfBoundaryTraceResult.Miss else
             
         let b2 = b * b
         let c = co.LengthSquared() - boundary.Radius * boundary.Radius
 
         // missing sphere
         if b2 <= c then
-            TraceResult.Miss
+            SdfBoundaryTraceResult.Miss
         else
             let t = MathF.Sqrt(b2 - c)
             let b = -b
 
             let t2 = b + t
             // behind sphere
-            if t2 < 0f then TraceResult.Miss else
+            if t2 < 0f then SdfBoundaryTraceResult.Miss else
 
             let t1 = b - t
             // hitting
-            if t1 > ray.Epsilon then TraceResult.Hit t1 else
+            if t1 > ray.Epsilon then SdfBoundaryTraceResult.Hit t1 else
                 
             // inside
-            TraceResult.Inside
+            SdfBoundaryTraceResult.Inside
     //*)
 
 open Sphere

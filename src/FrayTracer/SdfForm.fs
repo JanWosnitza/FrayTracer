@@ -171,6 +171,35 @@ let unionSmooth (strength:float32) (sdfs:seq<SdfForm>) =
             Trace = createTrace boundary distance
         }
 
+let rec tryTrace (sdf:SdfForm) (length:float32) (ray:Ray) : voption<SdfFormTraceResult> =
+    if length < 0f then
+        ValueNone
+    else
+        let distance = sdf.Trace ray
+        if distance < ray.Epsilon then
+            ValueSome {
+                Position = ray.Origin
+                Distance = distance
+            }
+        else
+            tryTrace sdf (length - distance) (ray |> Ray.move distance)
+
+let normal (sdf:SdfForm) (epsilon:float32) (position:Vector3) =
+    let inline f (dimension:Vector3) =
+        let epsilon = dimension * epsilon
+        sdf.Distance (position + epsilon) - sdf.Distance (position - epsilon)
+
+    Vector3(f Vector3.UnitX, f Vector3.UnitY, f Vector3.UnitZ)
+    |> Vector3.normalize
+
+let normalFast (sdf:SdfForm) (epsilon:float32) (position:Vector3) (distanceAtPosition:float32) =
+    Vector3(
+        sdf.Distance (position + Vector3.UnitX * epsilon) - distanceAtPosition,
+        sdf.Distance (position + Vector3.UnitY * epsilon) - distanceAtPosition,
+        sdf.Distance (position + Vector3.UnitZ * epsilon) - distanceAtPosition
+    )
+    |> Vector3.normalize
+
 module Primitive =
     [<Struct>]
     type Sphere =

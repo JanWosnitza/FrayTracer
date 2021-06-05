@@ -3,7 +3,7 @@
 // RefractionIndex:
 // • http://www.rpi.edu/dept/phys/Dept2/APPhys1/optics/optics/node4.html
 // • https://en.wikipedia.org/wiki/Refractive_index#Typical_values
-
+(*
 let vacuum = {
     IntensityCoeff = 1.0f
     Intensity = 0.0f
@@ -57,3 +57,5 @@ let lead = {
     Intensity = 0.0f
     RefractionIndex = 2.6f
 }
+*)
+()

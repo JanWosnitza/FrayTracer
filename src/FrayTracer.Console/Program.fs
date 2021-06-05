@@ -25,11 +25,16 @@ let size = 1000
 
 let imageSize = {X = size; Y = size}
 
+let randomMaterial () =
+    FColor.ofRGB (rng.range_01 ()) (rng.range_01 ()) (rng.range_01 ())
+    |> SdfMaterial.createSolid
+
 let randomSphere () =
     SdfForm.Primitive.sphere {
         Center = rng.pointInBall 4.0f
         Radius = rng.range 0.3f 1.0f
     }
+    |> SdfObject.create (randomMaterial ())
 
 let randomCapsule () =
     let center = rng.pointInBall 4.0f
@@ -38,6 +43,7 @@ let randomCapsule () =
         To = center + rng.pointOnSphere (rng.range 0.5f 2.0f)
         Radius = rng.range 0.1f 0.3f
     }
+    |> SdfObject.create (randomMaterial ())
 
 let randomTorus () =
     SdfForm.Primitive.torus {
@@ -46,6 +52,7 @@ let randomTorus () =
         MajorRadius = rng.range 0.1f 0.4f
         MinorRadius = rng.range 0.1f 0.3f
     }
+    |> SdfObject.create (randomMaterial ())
 
 let randomTriangle () =
     let v1 = rng.pointInBall 4.0f
@@ -55,36 +62,26 @@ let randomTriangle () =
         v3 = v1 + rng.pointOnSphere (rng.range 0.5f 2.0f)
         Radius = rng.range 0.1f 0.5f
     }
+    |> SdfObject.create (randomMaterial ())
 
-let sdf1 =
-    SdfForm.subtraction
-        (SdfForm.intersection [
-            SdfForm.union [
-                for i = 1 to 100 do yield randomTorus ()
+let scene =
+    {
+        Object =
+            SdfObject.union [
+                for i = 1 to 1000 do yield randomTorus ()
             ]
+        LightDirection = (0f, -1f, 1f) |> Vector3 |> Vector3.normalize
+        BackgroundColor = FColor.ofRGB 0f 0f 0f
+    }
 
-            //SDF.Primitive.sphere {Center = Vector3(0f,0f,0f); Radius = 5f}
-        ])
-        [
-            //SDF.Primitive.sphere {Center = Vector3(0f,1f,-2f); Radius = 3f}
-        ]
-
-let lightDir = (0f, -1f, 1f) |> Vector3 |> Vector3.normalize
 let epsilon = 0.01f
-let backgroundColor = FColor.ofRGB 0f 0f 0f
-let objectColor = FColor.ofRGB 0f 0f 1f
-
-let sdf =
-    sdf1
-    //|> SDF.Performance.cache 0.1f epsilon
-//printfn "%A" (sdf.GetType())
 
 printfn $"Rendering..."
 
 let timer = Stopwatch.StartNew()
 let traced =
-    sdf
-    |> Test.traceWithDirectionalLigth epsilon 1000f backgroundColor objectColor lightDir
+    scene
+    |> SdfScene.trace epsilon 1000f
     |> Image.render imageSize camera epsilon
 timer.Stop()
 
