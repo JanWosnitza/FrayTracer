@@ -40,6 +40,22 @@ let union (sdfs:seq<SdfObject>) =
                 }
         }
 
+let subtraction (object:SdfObject) (forms:seq<SdfForm>) =
+    {
+        Form = SdfForm.subtraction object.Form forms
+        Material = object.Material
+    }
+
+let intersection (object:SdfObject) (forms:seq<SdfForm>) =
+    {
+        Form =
+            seq {
+                yield object.Form
+                yield! forms
+            } |> SdfForm.intersection
+        Material = object.Material
+    }
+
 let tryTrace (object:SdfObject) (length:float32) (ray:Ray) : voption<SdfObjectTraceResult> =
     match  SdfForm.tryTrace object.Form length ray with
     | ValueNone -> ValueNone
