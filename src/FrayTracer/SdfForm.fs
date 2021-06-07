@@ -4,15 +4,6 @@ module FrayTracer.SdfForm
 open System
 open System.Numerics
 
-let createTrace (boundary) (distance) =
-    let trace (ray) =
-        match SdfBoundary.trace boundary ray with
-        | Miss -> Single.PositiveInfinity
-        | Inside -> distance ray.Origin
-        | Hit length -> length
-
-    trace
-
 let tryDistance (sdf:SdfForm) (position:Vector3) =
     if SdfBoundary.isInside sdf.Boundary position then
         sdf.Distance position
@@ -33,27 +24,20 @@ let union (sdfs:seq<SdfForm>) =
         sdfs
         |> Array.sortInPlaceBy (fun sdf -> SdfBoundary.getMinDistance sdf.Boundary boundary.Center)
 
+        let distance =
+            fun (position) ->
+            let mutable min = Single.PositiveInfinity
+
+            for i = 0 to sdfs.Length - 1 do
+                let sdf = sdfs.[i]
+                if min > SdfBoundary.getMinDistance sdf.Boundary position then
+                    min <- sdf.Distance(position) |> MathF.min min
+            min
+
         {
-            Distance =
-                fun (position) ->
-                let mutable min = Single.PositiveInfinity
-
-                for i = 0 to sdfs.Length - 1 do
-                    let sdf = sdfs.[i]
-                    if min > SdfBoundary.getMinDistance sdf.Boundary position then
-                        min <- sdf.Distance(position) |> MathF.min min
-                min
+            Distance = distance
             Boundary = boundary
-            Trace =
-                fun (ray) ->
-                if not <| SdfBoundary.traceTest boundary ray then Single.PositiveInfinity else
-
-                let mutable min = Single.PositiveInfinity
-                for i = 0 to sdfs.Length - 1 do
-                    let sdf = sdfs.[i]
-                    if min > SdfBoundary.getMinDistance sdf.Boundary ray.Origin then
-                        min <- sdf.Trace ray |> MathF.min min
-                min
+            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
         }
 
 let subtraction (a:SdfForm) (sdfs:seq<SdfForm>) =
@@ -73,7 +57,7 @@ let subtraction (a:SdfForm) (sdfs:seq<SdfForm>) =
         {
             Distance = distance
             Boundary = boundary
-            Trace = createTrace boundary distance
+            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
         }
 
 let intersection (sdfs:seq<SdfForm>) =
@@ -94,7 +78,7 @@ let intersection (sdfs:seq<SdfForm>) =
         {
             Distance = distance
             Boundary = boundary
-            Trace = createTrace boundary distance
+            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
         }
 
 let unionTree (sdfs:seq<SdfForm>) =
@@ -168,14 +152,15 @@ let unionSmooth (strength:float32) (sdfs:seq<SdfForm>) =
         {
             Distance = distance
             Boundary = boundary
-            Trace = createTrace boundary distance
+            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
         }
 
 let rec tryTrace (sdf:SdfForm) (ray:Ray) : voption<Ray> =
     if ray.Length <= 0f then
         ValueNone
     else
-        let length = sdf.Trace ray
+        let length = ray |> Ray.toFastDistanceQuery |> sdf.FastDistance
+        //let length = ray.Origin |> sdf.Distance
         if length < ray.Epsilon then
             ValueSome ray
         else
@@ -189,14 +174,48 @@ let normal (sdf:SdfForm) (epsilon:float32) (position:Vector3) =
     Vector3(f Vector3.UnitX, f Vector3.UnitY, f Vector3.UnitZ)
     |> Vector3.normalize*)
 
-    let distanceAtPosition = sdf.Distance position
-
     Vector3(
-        sdf.Distance (position + Vector3.UnitX * epsilon) - distanceAtPosition,
-        sdf.Distance (position + Vector3.UnitY * epsilon) - distanceAtPosition,
-        sdf.Distance (position + Vector3.UnitZ * epsilon) - distanceAtPosition
-    )
+        sdf.Distance (Vector3(position.X + epsilon, position.Y, position.Z)),
+        sdf.Distance (Vector3(position.X, position.Y + epsilon, position.Z)),
+        sdf.Distance (Vector3(position.X, position.Y, position.Z + epsilon))
+    ) - Vector3(sdf.Distance position)
     |> Vector3.normalize
+
+let cache (width:float32) (sdf:SdfForm) =
+    //let halfDiagonal = MathF.sqrt (width * width * 3.0f) * 0.5f
+    let cachedDistances = System.Collections.Concurrent.ConcurrentDictionary<struct (int * int * int), float32>()
+    let widthInv = 1f / width
+    {
+        Distance = sdf.Distance
+        Boundary = sdf.Boundary
+        FastDistance =
+            fun query ->
+            let x = query.Position.X * widthInv |> MathF.round
+            let y = query.Position.Y * widthInv |> MathF.round
+            let z = query.Position.Z * widthInv |> MathF.round
+
+            let center =
+                Vector3(
+                    float32 x * width,
+                    float32 y * width,
+                    float32 z * width
+                )
+
+            let cachedDistance =
+                let key = struct (int x, int y, int z)
+                match cachedDistances.TryGetValue(key) with
+                | true, distance -> distance
+                | _ ->
+                    let distance = sdf.Distance center //- halfDiagonal
+                    cachedDistances.TryAdd(key, distance) |> ignore
+                    distance
+
+            let distance = cachedDistance - Vector3.distance query.Position center
+            if distance > query.Epsilon then
+                distance
+            else
+                sdf.Distance query.Position
+    }
 
 module Primitive =
     [<Struct>]
@@ -212,12 +231,7 @@ module Primitive =
         {
             Distance = distance
             Boundary = boundary
-            Trace =
-                fun ray ->
-                match SdfBoundary.trace boundary ray with
-                | Miss -> Single.PositiveInfinity
-                | Inside _ -> distance ray.Origin
-                | Hit length -> length
+            FastDistance = fun (query) -> distance query.Position
         }
 
     [<Struct>]
@@ -254,7 +268,7 @@ module Primitive =
         {
             Distance = distance
             Boundary = boundary
-            Trace = createTrace boundary distance
+            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
         }
 
     [<Struct>]
@@ -282,7 +296,7 @@ module Primitive =
         {
             Distance = distance
             Boundary = boundary
-            Trace = createTrace boundary distance
+            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
         }
 
     [<Struct>]
@@ -348,5 +362,5 @@ module Primitive =
         {
             Distance = distance
             Boundary = boundary
-            Trace = createTrace boundary distance
+            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
         }

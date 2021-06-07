@@ -4,7 +4,8 @@ module FrayTracer.SdfScene
 open System
 open System.Numerics
 
-let trace (scene:SdfScene) (ray:Ray) =
+let trace (scene:SdfScene) =
+    fun (ray:Ray) ->
     match  SdfObject.tryTrace scene.Object ray with
     | ValueNone -> scene.BackgroundColor
     | ValueSome result ->

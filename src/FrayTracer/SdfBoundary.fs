@@ -4,6 +4,17 @@ module FrayTracer.SdfBoundary
 open System
 open System.Numerics
 
+let createFastDistanceQuery (getDistance:Vector3->float32) (boundary:SdfBoundary) =
+    let minRadius2 = (boundary.Radius * 1.73f) ** 2f
+    let fastDistance (query:SdfFastDistanceQuery) =
+        let distance2 = Vector3.DistanceSquared(boundary.Center, query.Position)
+        if distance2 > minRadius2 then
+            MathF.sqrt distance2 - boundary.Radius
+        else
+            getDistance query.Position
+
+    fastDistance
+
 let union (a : SdfBoundary) (b : SdfBoundary) =
     let diff = b.Center - a.Center
     let distance = diff.Length()
@@ -159,8 +170,13 @@ module Sphere =
         // missing sphere
         if b2 <= c then false else
 
+        let t = MathF.Sqrt(b2 - c)
+
         // is behind spehere?
-        MathF.Sqrt(b2 - c) + ray.Epsilon > b
+        if b >= t then false else
+
+        // longer than ray
+        -b - t < ray.Length
 
     let trace (boundary : SdfBoundary) (ray : Ray) =
         let co = ray.Origin - boundary.Center
@@ -177,13 +193,15 @@ module Sphere =
             SdfBoundaryTraceResult.Miss
         else
             let t = MathF.Sqrt(b2 - c)
-            let b = -b
 
-            let t2 = b + t
             // behind sphere
-            if t2 < 0f then SdfBoundaryTraceResult.Miss else
+            if b >= t then SdfBoundaryTraceResult.Miss else
 
-            let t1 = b - t
+            let t1 = -b - t
+
+            // longer than ray
+            if t1 > ray.Length then SdfBoundaryTraceResult.Miss else
+
             // hitting
             if t1 > ray.Epsilon then SdfBoundaryTraceResult.Hit t1 else
                 
@@ -191,6 +209,7 @@ module Sphere =
             SdfBoundaryTraceResult.Inside
     //*)
 
-open Sphere
-let inline traceTest (boundary : SdfBoundary) (ray : Ray) = traceTest boundary ray
-let inline trace (boundary : SdfBoundary) (ray : Ray) = trace boundary ray
+//open Sphere
+//let inline traceTest (boundary : SdfBoundary) (ray : Ray) = traceTest boundary ray
+//let inline trace (boundary : SdfBoundary) (ray : Ray) = trace boundary ray
+

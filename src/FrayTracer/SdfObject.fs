@@ -66,3 +66,8 @@ let tryTrace (object:SdfObject) (ray:Ray) : voption<SdfObjectTraceResult> =
             Normal = SdfForm.normal object.Form (ray.Epsilon * 0.1f) position
             Color = object.Material |> SdfMaterial.getColor position
         }
+
+let cache (width) (object:SdfObject) =
+    {object with
+        Form = SdfForm.cache width object.Form
+    }

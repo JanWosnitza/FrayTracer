@@ -25,11 +25,19 @@ type SdfBoundaryTraceResult =
     | Hit of EnterDistance:float32
     | Inside
 
+
+[<Struct>]
+type SdfFastDistanceQuery =
+    {
+        Position : Vector3
+        Epsilon : float32
+    }
+
 type SdfForm =
     {
         Distance : Vector3 -> float32
         Boundary : SdfBoundary
-        Trace : Ray -> float32
+        FastDistance : SdfFastDistanceQuery -> float32
     }
 
 type SdfMaterial =
