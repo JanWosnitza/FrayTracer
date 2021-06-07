@@ -4,8 +4,8 @@ module FrayTracer.SdfScene
 open System
 open System.Numerics
 
-let trace (epsilon:float32) (length:float32) (scene:SdfScene) (ray:Ray) =
-    match  SdfObject.tryTrace scene.Object length ray with
+let trace (scene:SdfScene) (ray:Ray) =
+    match  SdfObject.tryTrace scene.Object ray with
     | ValueNone -> scene.BackgroundColor
     | ValueSome result ->
         let light =
@@ -16,11 +16,12 @@ let trace (epsilon:float32) (length:float32) (scene:SdfScene) (ray:Ray) =
             else
                 // shadow
                 {
-                    Origin = result.Position + result.Normal * epsilon
-                    Epsilon = epsilon
+                    Origin = result.Position + result.Normal * ray.Epsilon
+                    Epsilon = ray.Epsilon
                     Direction = -scene.LightDirection
+                    Length = result.Ray.Length
                 }
-                |> SdfForm.tryTrace scene.Object.Form length
+                |> SdfForm.tryTrace scene.Object.Form
                 |> function
                     | ValueNone -> -dot
                     | ValueSome _ -> 0.0f

@@ -5,10 +5,11 @@ open System.Numerics
 [<Struct>]
 type Ray =
     {
-        Epsilon : float32
         Origin : Vector3
         /// <summary>Normalized direction of the ray.</summary>
         Direction : Vector3
+        Length : float32
+        Epsilon : float32
     }
 
 [<Struct>]
@@ -31,13 +32,6 @@ type SdfForm =
         Trace : Ray -> float32
     }
 
-[<Struct>]
-type SdfFormTraceResult =
-    {
-        Position : Vector3
-        Distance : float32
-    }
-
 type SdfMaterial =
     {
         Color : Vector3 -> FColor
@@ -52,10 +46,12 @@ type SdfObject =
 [<Struct>]
 type SdfObjectTraceResult =
     {
-        Position : Vector3
+        Ray : Ray
         Normal : Vector3
         Color : FColor
     }
+
+    member this.Position = this.Ray.Origin
 
 type SdfScene =
     {

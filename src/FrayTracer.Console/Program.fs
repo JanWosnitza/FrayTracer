@@ -70,11 +70,11 @@ let scene =
             SdfObject.subtraction
                 (SdfObject.intersection
                     (SdfObject.union [
-                        for i = 1 to 1000 do yield randomTorus ()
+                        for i = 1 to 200 do yield randomTorus ()
                     ])
                     [SdfForm.Primitive.sphere {Center = Vector3(0f,0f,0f); Radius = 3.5f}]
                 )
-                [SdfForm.Primitive.sphere {Center = Vector3(-0.5f,1f,-2f); Radius = 2f}]
+                [SdfForm.Primitive.sphere {Center = Vector3(-0.5f,1f,-2f); Radius = 2.5f}]
         LightDirection = (-0.5f, -1f, 1f) |> Vector3 |> Vector3.normalize
         BackgroundColor = FColor.ofRGB 0f 0f 0f
     }
@@ -86,8 +86,8 @@ printfn $"Rendering..."
 let timer = Stopwatch.StartNew()
 let traced =
     scene
-    |> SdfScene.trace epsilon 1000f
-    |> Image.render imageSize camera epsilon
+    |> SdfScene.trace
+    |> Image.render epsilon 1000f imageSize camera
 timer.Stop()
 
 printfn $"Time = {timer.Elapsed.TotalSeconds:F1} sec"

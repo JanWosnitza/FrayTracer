@@ -56,12 +56,13 @@ let intersection (object:SdfObject) (forms:seq<SdfForm>) =
         Material = object.Material
     }
 
-let tryTrace (object:SdfObject) (length:float32) (ray:Ray) : voption<SdfObjectTraceResult> =
-    match  SdfForm.tryTrace object.Form length ray with
+let tryTrace (object:SdfObject) (ray:Ray) : voption<SdfObjectTraceResult> =
+    match  SdfForm.tryTrace object.Form ray with
     | ValueNone -> ValueNone
-    | ValueSome result ->
+    | ValueSome resultRay ->
+        let position = resultRay.Origin
         ValueSome {
-            Position = result.Position
-            Normal = SdfForm.normalFast object.Form (ray.Epsilon / 500f) result.Position result.Distance
-            Color = object.Material |> SdfMaterial.getColor result.Position
+            Ray = resultRay
+            Normal = SdfForm.normal object.Form (ray.Epsilon * 0.1f) position
+            Color = object.Material |> SdfMaterial.getColor position
         }
