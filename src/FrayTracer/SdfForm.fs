@@ -206,7 +206,7 @@ let cache (width:float32) (sdf:SdfForm) =
                 match cachedDistances.TryGetValue(key) with
                 | true, distance -> distance
                 | _ ->
-                    let distance = sdf.Distance center //- halfDiagonal
+                    let distance = sdf.FastDistance {Position = center; Epsilon = 0f} //- halfDiagonal
                     cachedDistances.TryAdd(key, distance) |> ignore
                     distance
 
@@ -214,7 +214,7 @@ let cache (width:float32) (sdf:SdfForm) =
             if distance > query.Epsilon then
                 distance
             else
-                sdf.Distance query.Position
+                sdf.FastDistance query
     }
 
 module Primitive =

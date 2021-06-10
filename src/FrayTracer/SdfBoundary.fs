@@ -62,7 +62,7 @@ let intersection (a : SdfBoundary) (b : SdfBoundary) =
 let intersectionMany (boundaries : seq<SdfBoundary>) =
     // this might results a larger boundary than strictly necessary
     boundaries
-    |> Seq.reduce union
+    |> Seq.reduce intersection
 
 let isInside (x:SdfBoundary) (position:Vector3) = Vector3.DistanceSquared(x.Center, position) < x.Radius * x.Radius
 
