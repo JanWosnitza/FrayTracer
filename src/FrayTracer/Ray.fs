@@ -18,5 +18,5 @@ let inline setDirection (direction:Vector3) (ray:Ray) =
 let inline toFastDistanceQuery (ray:Ray) : SdfFastDistanceQuery =
     {
         Position = ray.Origin
-        Epsilon = ray.Epsilon * 2f
+        Threshold = ray.Epsilon * 2f
     }

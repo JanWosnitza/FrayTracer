@@ -30,7 +30,7 @@ type SdfBoundaryTraceResult =
 type SdfFastDistanceQuery =
     {
         Position : Vector3
-        Epsilon : float32
+        Threshold : float32
     }
 
 type SdfForm =

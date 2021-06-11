@@ -182,7 +182,8 @@ let normal (sdf:SdfForm) (epsilon:float32) (position:Vector3) =
     |> Vector3.normalize
 
 let cache (width:float32) (sdf:SdfForm) =
-    //let halfDiagonal = MathF.sqrt (width * width * 3.0f) * 0.5f
+    let diagonal = MathF.sqrt (width * width * 3.0f)
+    let halfDiagonal = diagonal * 0.5f
     let cachedDistances = System.Collections.Concurrent.ConcurrentDictionary<struct (int * int * int), float32>()
     let widthInv = 1f / width
     {
@@ -201,20 +202,27 @@ let cache (width:float32) (sdf:SdfForm) =
                     float32 z * width
                 )
 
-            let cachedDistance =
-                let key = struct (int x, int y, int z)
-                match cachedDistances.TryGetValue(key) with
-                | true, distance -> distance
-                | _ ->
-                    let distance = sdf.FastDistance {Position = center; Epsilon = 0f} //- halfDiagonal
-                    cachedDistances.TryAdd(key, distance) |> ignore
-                    distance
-
-            let distance = cachedDistance - Vector3.distance query.Position center
-            if distance > query.Epsilon then
-                distance
-            else
+            let key = struct (int x, int y, int z)
+            match cachedDistances.TryGetValue(key) with
+            | true, cachedDistance when Single.IsNaN(cachedDistance) ->
                 sdf.FastDistance query
+            | true, cachedDistance ->
+                let distance = cachedDistance - Vector3.distance query.Position center
+                if distance > query.Threshold then
+                    distance
+                else
+                    sdf.FastDistance query
+            | _ ->
+                let distance = sdf.FastDistance query
+                
+                let cachedDistance =
+                    if distance + Vector3.distance query.Position center < halfDiagonal then
+                        Single.NaN
+                    else
+                        sdf.FastDistance {Position = center; Threshold = halfDiagonal}
+                cachedDistances.TryAdd(key, cachedDistance) |> ignore
+
+                distance
     }
 
 module Primitive =
