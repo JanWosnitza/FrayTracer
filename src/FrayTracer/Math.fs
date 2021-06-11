@@ -69,5 +69,7 @@ module Vector3 =
     let inline min (v1) (v2) = Vector3.Min(v1, v2)
     let inline max (v1) (v2) = Vector3.Max(v1, v2)
 
+    let inline abs (v) = Vector3.Abs(v)
+
     let inline minDimension (v:Vector3) = v.X |> MathF.min v.Y |> MathF.min v.Z
     let inline maxDimension (v:Vector3) = v.X |> MathF.max v.Y |> MathF.max v.Z
