@@ -16,56 +16,32 @@ let union (forms:seq<SdfForm>) =
     | [||] -> failwith "No SdfObjects given."
     | [|form|] -> form
     | forms ->
-        let getForms = forms |> SdfBoundary.buildSpatialLookup (fun x -> x.Boundary)
-
-        let distance =
-            fun (position) ->
-            let forms = getForms position
-
-            let mutable min = Single.PositiveInfinity
-            for i = 0 to forms.Length - 1 do
-                let sdf = forms.[i]
-                if min > SdfBoundary.getMinDistance sdf.Boundary position then
-                    min <- sdf.Distance(position) |> MathF.min min
-            min
-
-        let fastDistance =
-            fun (query:SdfFastDistanceQuery) ->
-            let forms = getForms query.Position
-
-            let mutable min = Single.PositiveInfinity
-            for i = 0 to forms.Length - 1 do
-                let sdf = forms.[i]
-                if min > SdfBoundary.getMinDistance sdf.Boundary query.Position then
-                    min <- sdf.FastDistance query |> MathF.min min
-            min
-
-        let boundary =
-            forms
-            |> Seq.map (fun x -> x.Boundary)
-            |> SdfBoundary.unionMany
-
         {
-            Distance = distance
-            Boundary = boundary
-            FastDistance = SdfBoundary.createFastDistanceQuery2 fastDistance boundary
+            Distance =
+                let getForms = forms |> SdfBoundary.buildSpatialLookup (fun x -> x.Boundary)
+                fun (position) ->
+                let forms = getForms position
+
+                let mutable min = Single.PositiveInfinity
+                for i = 0 to forms.Length - 1 do
+                    let sdf = forms.[i]
+                    if min > SdfBoundary.getMinDistance sdf.Boundary position then
+                        min <- sdf.Distance(position) |> MathF.min min
+                min
+
+            Boundary =
+                forms
+                |> Seq.map (fun x -> x.Boundary)
+                |> SdfBoundary.unionMany
         }
 
 let subtract (a:SdfForm) (b:SdfForm) =
-    let boundary = a.Boundary
-
-    let distance (position) =
-        a.Distance position
-        |> MathF.max -(b.Distance position)
-
-    let fastDistance (query) =
-        a.FastDistance query
-        |> MathF.max -(b.FastDistance query)
-
     {
-        Distance = distance
-        Boundary = boundary
-        FastDistance = fastDistance
+        Distance =
+            fun position ->
+            a.Distance position
+            |> MathF.max -(b.Distance position)
+        Boundary = a.Boundary
     }
 
 let intersect (forms:seq<SdfForm>) =
@@ -73,28 +49,16 @@ let intersect (forms:seq<SdfForm>) =
     | [||] -> failwith "No SdfObjects given."
     | [|form|] -> form
     | forms ->
-        let boundary = forms |> Seq.map (fun x -> x.Boundary) |> SdfBoundary.intersectionMany
-
-        let distance (position) =
-            let mutable max = Single.NegativeInfinity
-            for i = 0 to forms.Length - 1 do
-                let obj = forms.[i]
-                if max < SdfBoundary.getMaxDistance obj.Boundary position then
-                    max <- obj.Distance position |> MathF.max max
-            max
-
-        let fastDistance (query) =
-            let mutable max = Single.NegativeInfinity
-            for i = 0 to forms.Length - 1 do
-                let obj = forms.[i]
-                if max < SdfBoundary.getMaxDistance obj.Boundary query.Position then
-                    max <- obj.FastDistance query |> MathF.max max
-            max
-
         {
-            Distance = distance
-            Boundary = boundary
-            FastDistance = SdfBoundary.createFastDistanceQuery2 fastDistance boundary
+            Distance =
+                fun position ->
+                let mutable max = Single.NegativeInfinity
+                for i = 0 to forms.Length - 1 do
+                    let obj = forms.[i]
+                    if max < SdfBoundary.getMaxDistance obj.Boundary position then
+                        max <- obj.Distance position |> MathF.max max
+                max
+            Boundary = forms |> Seq.map (fun x -> x.Boundary) |> SdfBoundary.intersectionMany
         }
 
 let unionSmooth (strength:float32) (forms:seq<SdfForm>) =
@@ -102,31 +66,27 @@ let unionSmooth (strength:float32) (forms:seq<SdfForm>) =
     | [||] -> failwithf "blub"
     | [|sdf|] -> sdf
     | sdfs ->
-        let strengthInverse = -1f / strength
-
-        let distance (position) =
-            let mutable sum = 0f
-            for i = 0 to sdfs.Length - 1 do
-                let distance = sdfs.[i].Distance position
-                sum <- sum + MathF.Exp(strengthInverse * distance)
-
-            -MathF.Log(sum) * strength
-
-        let boundary =
-            sdfs
-            |> Seq.map (fun x -> x.Boundary)
-            |> SdfBoundary.unionMany
         {
-            Distance = distance
-            Boundary = boundary
-            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
+            Distance =
+                let strengthInverse = -1f / strength
+                fun position ->
+                let mutable sum = 0f
+                for i = 0 to sdfs.Length - 1 do
+                    let distance = sdfs.[i].Distance position
+                    sum <- sum + MathF.Exp(strengthInverse * distance)
+
+                -MathF.Log(sum) * strength
+
+            Boundary =
+                sdfs
+                |> Seq.map (fun x -> x.Boundary)
+                |> SdfBoundary.unionMany
         }
 
 let rec tryTrace (sdf:SdfForm) (ray:Ray) : voption<Ray> =
     if ray.Length <= 0f then
         ValueNone
     else
-        //let length = ray |> Ray.toFastDistanceQuery |> sdf.FastDistance
         let length = ray.Origin |> sdf.Distance
         if length < ray.Epsilon then
             ValueSome ray
@@ -148,50 +108,6 @@ let normal (sdf:SdfForm) (epsilon:float32) (position:Vector3) =
     ) - Vector3(sdf.Distance position)
     |> Vector3.normalize
 
-let cached (width:float32) (sdf:SdfForm) =
-    let diagonal = MathF.sqrt (width * width * 3.0f)
-    let halfDiagonal = diagonal * 0.5f
-    let cachedDistances = System.Collections.Concurrent.ConcurrentDictionary<struct (int * int * int), float32>()
-    let widthInv = 1f / width
-    {
-        Distance = sdf.Distance
-        Boundary = sdf.Boundary
-        FastDistance =
-            fun query ->
-            let x = query.Position.X * widthInv |> MathF.round
-            let y = query.Position.Y * widthInv |> MathF.round
-            let z = query.Position.Z * widthInv |> MathF.round
-
-            let center =
-                Vector3(
-                    float32 x * width,
-                    float32 y * width,
-                    float32 z * width
-                )
-
-            let key = struct (int x, int y, int z)
-            match cachedDistances.TryGetValue(key) with
-            | true, cachedDistance when Single.IsNaN(cachedDistance) ->
-                sdf.FastDistance query
-            | true, cachedDistance ->
-                let distance = cachedDistance - Vector3.distance query.Position center
-                if distance > query.Threshold then
-                    distance
-                else
-                    sdf.FastDistance query
-            | _ ->
-                let distance = sdf.FastDistance query
-                
-                let cachedDistance =
-                    if distance + Vector3.distance query.Position center < halfDiagonal then
-                        Single.NaN
-                    else
-                        sdf.FastDistance {Position = center; Threshold = halfDiagonal}
-                cachedDistances.TryAdd(key, cachedDistance) |> ignore
-
-                distance
-    }
-
 module Primitive =
     [<Struct>]
     type Sphere =
@@ -201,12 +117,15 @@ module Primitive =
         }
 
     let sphere (data:Sphere) =
-        let distance (position) = Vector3.Distance(data.Center, position) - data.Radius
-        let boundary : SdfBoundary = {Center = data.Center; Radius = data.Radius}
         {
-            Distance = distance
-            Boundary = boundary
-            FastDistance = fun (query) -> distance query.Position
+            Distance =
+                fun position ->
+                Vector3.Distance(data.Center, position) - data.Radius
+
+            Boundary = {
+                Center = data.Center
+                Radius = data.Radius
+            }
         }
 
     [<Struct>]
@@ -218,32 +137,29 @@ module Primitive =
         }
 
     let capsule (data:Capsule) =
-        let dir = (data.To - data.From) |> Vector3.normalize
-
-        let distance (position) =
-            let distance =
-                let diff = position - data.From
-                let t = Vector3.Dot(diff, dir)
-                if t <= 0f then
-                    diff.Length()
-                elif t >= 1f then
-                    Vector3.Distance(diff, dir)
-                else
-                    Vector3.Distance(diff, dir * t)
-
-                //Vector3.Distance(diff, dir * MathF.clamp01 t)
-                
-            distance - data.Radius
-
-        let boundary :SdfBoundary = {
-            Center = Vector3.Lerp(data.From, data.To, 0.5f)
-            Radius = data.Radius + Vector3.Distance(data.From, data.To) * 0.5f
-        }
-
         {
-            Distance = distance
-            Boundary = boundary
-            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
+            Distance =
+                let dir = (data.To - data.From) |> Vector3.normalize
+
+                fun position ->
+                let distance =
+                    let diff = position - data.From
+                    let t = Vector3.Dot(diff, dir)
+                    if t <= 0f then
+                        diff.Length()
+                    elif t >= 1f then
+                        Vector3.Distance(diff, dir)
+                    else
+                        Vector3.Distance(diff, dir * t)
+
+                    //Vector3.Distance(diff, dir * MathF.clamp01 t)
+                
+                distance - data.Radius
+
+            Boundary = {
+                Center = Vector3.Lerp(data.From, data.To, 0.5f)
+                Radius = data.Radius + Vector3.Distance(data.From, data.To) * 0.5f
+            }
         }
 
     [<Struct>]
@@ -256,22 +172,25 @@ module Primitive =
         }
 
     let torus (data:Torus) =
-        let normal = data.Normal |> Vector3.normalize
-        let planeD = -Vector3.dot data.Center normal
-
-        let distance (position) =
-            let distanceToPlane = Vector3.Dot(position, normal) + planeD
-            let distanceToCenter = Vector3.Distance(data.Center, position - (distanceToPlane * normal))
-            let distanceToCircle = distanceToCenter - data.MajorRadius
-
-            Vector2(distanceToPlane, distanceToCircle).Length() - data.MinorRadius
-
-        let boundary :SdfBoundary = {Center = data.Center; Radius = data.MajorRadius + data.MinorRadius}
+        let data =
+            {data with
+                Normal = data.Normal |> Vector3.normalize
+            }
 
         {
-            Distance = distance
-            Boundary = boundary
-            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
+            Distance =
+                let planeD = -(Vector3.dot data.Center data.Normal)
+                fun position ->
+                let distanceToPlane = Vector3.Dot(position, data.Normal) + planeD
+                let distanceToCenter = Vector3.Distance(data.Center, position - (distanceToPlane * data.Normal))
+                let distanceToCircle = distanceToCenter - data.MajorRadius
+
+                Vector2(distanceToPlane, distanceToCircle).Length() - data.MinorRadius
+
+            Boundary = {
+                Center = data.Center
+                Radius = data.MajorRadius + data.MinorRadius
+            }
         }
 
     [<Struct>]
@@ -296,7 +215,7 @@ module Primitive =
         let n32 = Vector3.Cross(v32, nor) |> Vector3.normalize
         let n13 = Vector3.Cross(v13, nor) |> Vector3.normalize
 
-        let distance (position) =
+        let inline distance (position) =
             let p1 = position - data.v1
             let p2 = position - data.v2
             let p3 = position - data.v3
@@ -337,5 +256,4 @@ module Primitive =
         {
             Distance = distance
             Boundary = boundary
-            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
         }

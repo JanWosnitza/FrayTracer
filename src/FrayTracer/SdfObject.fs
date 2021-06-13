@@ -72,8 +72,3 @@ let tryTrace (object:SdfObject) (ray:Ray) : voption<SdfObjectTraceResult> =
                 //testColor
                 object.Material |> SdfMaterial.getColor position
         }
-
-let cached (width) (object:SdfObject) =
-    {object with
-        Form = SdfForm.cached width object.Form
-    }

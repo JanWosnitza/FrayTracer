@@ -4,44 +4,6 @@ module FrayTracer.SdfBoundary
 open System
 open System.Numerics
 
-
-let createFastDistanceQuery (getDistance:Vector3->float32) (boundary:SdfBoundary) =
-    let fastDistance (query:SdfFastDistanceQuery) =
-#if false
-        let boxDistance =
-            (
-#if !false
-                (boundary.Center.X - query.Position.X |> MathF.abs)
-                |> MathF.max (boundary.Center.Y - query.Position.Y |> MathF.abs)
-                |> MathF.max (boundary.Center.Z - query.Position.Z |> MathF.abs)
-#else
-                (boundary.Center - query.Position)
-                |> Vector3.abs
-                |> Vector3.maxDimension
-#endif
-            ) - boundary.Radius
-
-        if boxDistance > query.Threshold * 2f then boxDistance else
-#endif
-
-        let sphereDistance = Vector3.Distance(boundary.Center, query.Position) - boundary.Radius
-        if sphereDistance > query.Threshold then
-            sphereDistance
-        else
-            getDistance query.Position
-
-    fastDistance
-
-let createFastDistanceQuery2 (getDistance:SdfFastDistanceQuery->float32) (boundary:SdfBoundary) =
-    let fastDistance (query:SdfFastDistanceQuery) =
-        let sphereDistance = Vector3.Distance(boundary.Center, query.Position) - boundary.Radius
-        if sphereDistance > query.Threshold then
-            sphereDistance
-        else
-            getDistance query
-
-    fastDistance
-
 let union (a : SdfBoundary) (b : SdfBoundary) =
     let diff = b.Center - a.Center
     let distance = diff.Length()
