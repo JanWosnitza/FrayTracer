@@ -40,19 +40,19 @@ let union (sdfs:seq<SdfObject>) =
                 }
         }
 
-let subtraction (object:SdfObject) (forms:seq<SdfForm>) =
+let subtract (object:SdfObject) (form:SdfForm) =
     {
-        Form = SdfForm.subtraction object.Form forms
+        Form = SdfForm.subtract object.Form form
         Material = object.Material
     }
 
-let intersection (object:SdfObject) (forms:seq<SdfForm>) =
+let intersect (object:SdfObject) (forms:seq<SdfForm>) =
     {
         Form =
             seq {
                 yield object.Form
                 yield! forms
-            } |> SdfForm.intersection
+            } |> SdfForm.intersect
         Material = object.Material
     }
 
@@ -67,7 +67,7 @@ let tryTrace (object:SdfObject) (ray:Ray) : voption<SdfObjectTraceResult> =
             Color = object.Material |> SdfMaterial.getColor position
         }
 
-let cache (width) (object:SdfObject) =
+let cached (width) (object:SdfObject) =
     {object with
-        Form = SdfForm.cache width object.Form
+        Form = SdfForm.cached width object.Form
     }

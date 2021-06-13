@@ -34,37 +34,45 @@ let union (sdfs:seq<SdfForm>) =
                     min <- sdf.Distance(position) |> MathF.min min
             min
 
-        {
-            Distance = distance
-            Boundary = boundary
-            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
-        }
-
-let subtraction (a:SdfForm) (sdfs:seq<SdfForm>) =
-    match sdfs |> Seq.toArray with
-    | [||] -> a
-    | sdfs ->
-        let distance (position) =
-            let mutable max = a.Distance position
+        let fastDistance =
+            fun (query:SdfFastDistanceQuery) ->
+            let mutable min = Single.PositiveInfinity
             for i = 0 to sdfs.Length - 1 do
-                let obj = sdfs.[i]
-                if max < -SdfBoundary.getMinDistance obj.Boundary position then
-                    max <- -(obj.Distance position) |> MathF.max max
-            max
-
-        let boundary = a.Boundary
+                let sdf = sdfs.[i]
+                if min > SdfBoundary.getMinDistance sdf.Boundary query.Position then
+                    min <- sdf.FastDistance query |> MathF.min min
+            min
 
         {
             Distance = distance
             Boundary = boundary
-            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
+            FastDistance = SdfBoundary.createFastDistanceQuery2 fastDistance boundary
         }
 
-let intersection (sdfs:seq<SdfForm>) =
+let subtract (a:SdfForm) (b:SdfForm) =
+    let boundary = a.Boundary
+
+    let distance (position) =
+        a.Distance position
+        |> MathF.max -(b.Distance position)
+
+    let fastDistance (query) =
+        a.FastDistance query
+        |> MathF.max -(b.FastDistance query)
+
+    {
+        Distance = distance
+        Boundary = boundary
+        FastDistance = fastDistance
+    }
+
+let intersect (sdfs:seq<SdfForm>) =
     match sdfs |> Seq.toArray with
     | [||] -> failwith "No SdfObjects given."
     | [|sdf|] -> sdf
     | sdfs ->
+        let boundary = sdfs |> Seq.map (fun x -> x.Boundary) |> SdfBoundary.intersectionMany
+
         let distance (position) =
             let mutable max = Single.NegativeInfinity
             for i = 0 to sdfs.Length - 1 do
@@ -73,12 +81,18 @@ let intersection (sdfs:seq<SdfForm>) =
                     max <- obj.Distance position |> MathF.max max
             max
 
-        let boundary = sdfs |> Seq.map (fun x -> x.Boundary) |> SdfBoundary.intersectionMany
+        let fastDistance (query) =
+            let mutable max = Single.NegativeInfinity
+            for i = 0 to sdfs.Length - 1 do
+                let obj = sdfs.[i]
+                if max < SdfBoundary.getMaxDistance obj.Boundary query.Position then
+                    max <- obj.FastDistance query |> MathF.max max
+            max
 
         {
             Distance = distance
             Boundary = boundary
-            FastDistance = SdfBoundary.createFastDistanceQuery distance boundary
+            FastDistance = SdfBoundary.createFastDistanceQuery2 fastDistance boundary
         }
 
 let unionTree (sdfs:seq<SdfForm>) =
@@ -181,7 +195,7 @@ let normal (sdf:SdfForm) (epsilon:float32) (position:Vector3) =
     ) - Vector3(sdf.Distance position)
     |> Vector3.normalize
 
-let cache (width:float32) (sdf:SdfForm) =
+let cached (width:float32) (sdf:SdfForm) =
     let diagonal = MathF.sqrt (width * width * 3.0f)
     let halfDiagonal = diagonal * 0.5f
     let cachedDistances = System.Collections.Concurrent.ConcurrentDictionary<struct (int * int * int), float32>()
