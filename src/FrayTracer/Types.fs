@@ -26,6 +26,13 @@ type SdfBoundaryTraceResult =
     | Inside
 
 [<Struct>]
+type SdfFormTraceResult =
+    {
+        Ray : Ray
+        Distance : float32
+    }
+
+[<Struct>]
 type SdfForm =
     {
         Distance : Vector3 -> float32

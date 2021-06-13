@@ -36,9 +36,8 @@ let union (objects:seq<SdfObject>) =
                                 if distance < min then
                                     min <- distance
                                     minSdf <- sdf
-                
-                        minSdf.Material
-                        |> SdfMaterial.getColor position
+                        position
+                        |> SdfMaterial.getColor minSdf.Material
                 }
         }
 
@@ -58,17 +57,16 @@ let intersect (object:SdfObject) (forms:seq<SdfForm>) =
         Material = object.Material
     }
 
-let private testColor = FColor.ofRGB 1f 1f 1f
-
 let tryTrace (object:SdfObject) (ray:Ray) : voption<SdfObjectTraceResult> =
     match  SdfForm.tryTrace object.Form ray with
     | ValueNone -> ValueNone
-    | ValueSome resultRay ->
-        let position = resultRay.Origin
+    | ValueSome result ->
+        let position = result.Ray.Origin
+        let normal = SdfForm.normal object.Form (ray.Epsilon * 0.125f) (position, result.Distance)
         ValueSome {
-            Ray = resultRay
-            Normal = SdfForm.normal object.Form (ray.Epsilon * 0.1f) position
+            Ray = result.Ray
+            Normal = normal
             Color = 
-                //testColor
-                object.Material |> SdfMaterial.getColor position
+                position //- normal * ray.Epsilon
+                |> SdfMaterial.getColor object.Material
         }

@@ -6,5 +6,5 @@ let createSolid (color) : SdfMaterial =
         Color = fun _ -> color
     }
 
-let inline getColor (position) (material:SdfMaterial) =
+let inline getColor (material:SdfMaterial) (position) =
     material.Color position

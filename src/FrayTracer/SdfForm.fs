@@ -83,17 +83,20 @@ let unionSmooth (strength:float32) (forms:seq<SdfForm>) =
                 |> SdfBoundary.unionMany
         }
 
-let rec tryTrace (sdf:SdfForm) (ray:Ray) : voption<Ray> =
+let rec tryTrace (sdf:SdfForm) (ray:Ray) : voption<SdfFormTraceResult> =
     if ray.Length <= 0f then
         ValueNone
     else
-        let length = ray.Origin |> sdf.Distance
-        if length < ray.Epsilon then
-            ValueSome ray
+        let distance = ray.Origin |> sdf.Distance
+        if distance < ray.Epsilon then
+            ValueSome {
+                Ray = ray
+                Distance = distance
+            }
         else
-            tryTrace sdf (ray |> Ray.move length)
+            tryTrace sdf (ray |> Ray.move distance)
 
-let normal (sdf:SdfForm) (epsilon:float32) (position:Vector3) =
+let normal (sdf:SdfForm) (epsilon:float32) (position:Vector3, distance:float32) =
     (*let inline f (dimension:Vector3) =
         let epsilon = dimension * epsilon
         sdf.Distance (position + epsilon) - sdf.Distance (position - epsilon)
@@ -101,11 +104,13 @@ let normal (sdf:SdfForm) (epsilon:float32) (position:Vector3) =
     Vector3(f Vector3.UnitX, f Vector3.UnitY, f Vector3.UnitZ)
     |> Vector3.normalize*)
 
-    Vector3(
+    //let distance = sdf.Distance position
+
+    (Vector3(
         sdf.Distance (Vector3(position.X + epsilon, position.Y, position.Z)),
         sdf.Distance (Vector3(position.X, position.Y + epsilon, position.Z)),
         sdf.Distance (Vector3(position.X, position.Y, position.Z + epsilon))
-    ) - Vector3(sdf.Distance position)
+     ) - Vector3(distance))
     |> Vector3.normalize
 
 module Primitive =
