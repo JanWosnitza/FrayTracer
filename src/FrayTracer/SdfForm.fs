@@ -11,86 +11,37 @@ let tryDistance (sdf:SdfForm) (position:Vector3) =
     else
         ValueNone
 
-let union (sdfs:seq<SdfForm>) =
-    match sdfs |> Seq.toArray with
+let union (forms:seq<SdfForm>) =
+    match forms |> Seq.toArray with
     | [||] -> failwith "No SdfObjects given."
-    | [|sdf|] -> sdf
-    | sdfs ->
-        // very simple spatial distribution. can take some time to initialize :(
-        let aabbMin =
-            sdfs
-            |> Seq.map (fun x -> x.Boundary |> SdfBoundary.AABB.getMin)
-            |> Seq.reduce Vector3.min
-
-        let aabbMax =
-            sdfs
-            |> Seq.map (fun x -> x.Boundary |> SdfBoundary.AABB.getMax)
-            |> Seq.reduce Vector3.max
-
-        let countSize =
-            let radius = sdfs |> Seq.map (fun x -> x.Boundary.Radius) |> Seq.average
-            radius * 1.5f
-
-        let aabbSize = aabbMax - aabbMin
-
-        let countX = aabbSize.X / countSize |> MathF.ceiling_i |> max 1
-        let countY = aabbSize.X / countSize |> MathF.ceiling_i |> max 1
-        let countZ = aabbSize.X / countSize |> MathF.ceiling_i |> max 1
-        let cellSize = aabbSize / Vector3(float32 countX, float32 countY, float32 countZ)
-        let cellSizeInv = Vector3(1f) / cellSize
-
-        let cells = Array3D.Parallel.init countX countY countZ (fun x y z ->
-            let center = aabbMin + cellSize * 0.5f + cellSize * Vector3(float32 x, float32 y, float32 z)
-
-            let upperBound =
-                (sdfs
-                |> Seq.map (fun x -> SdfBoundary.getMaxDistance x.Boundary center)
-                |> Seq.min)
-                + (cellSize * 0.5f).Length()
-
-            let sdfs =
-                sdfs
-                |> Array.where (fun x -> SdfBoundary.getMinDistance x.Boundary center < upperBound)
-
-            // make checking nearest SDF first most likely
-            sdfs
-            |> Array.sortInPlaceBy (fun x -> SdfBoundary.getMinDistance x.Boundary center)
-
-            sdfs
-        )
-
-        let inline getCell (position) =
-            let c = (position - aabbMin) * cellSizeInv
-            cells.[
-                MathF.floor_i c.X |> MathI.clamp 0 (countX - 1),
-                MathF.floor_i c.Y |> MathI.clamp 0 (countY - 1),
-                MathF.floor_i c.Z |> MathI.clamp 0 (countZ - 1)
-            ]
+    | [|form|] -> form
+    | forms ->
+        let getForms = forms |> SdfBoundary.buildSpatialLookup (fun x -> x.Boundary)
 
         let distance =
             fun (position) ->
-            let sdfs = getCell position
+            let forms = getForms position
 
             let mutable min = Single.PositiveInfinity
-            for i = 0 to sdfs.Length - 1 do
-                let sdf = sdfs.[i]
+            for i = 0 to forms.Length - 1 do
+                let sdf = forms.[i]
                 if min > SdfBoundary.getMinDistance sdf.Boundary position then
                     min <- sdf.Distance(position) |> MathF.min min
             min
 
         let fastDistance =
             fun (query:SdfFastDistanceQuery) ->
-            let sdfs = getCell query.Position
+            let forms = getForms query.Position
 
             let mutable min = Single.PositiveInfinity
-            for i = 0 to sdfs.Length - 1 do
-                let sdf = sdfs.[i]
+            for i = 0 to forms.Length - 1 do
+                let sdf = forms.[i]
                 if min > SdfBoundary.getMinDistance sdf.Boundary query.Position then
                     min <- sdf.FastDistance query |> MathF.min min
             min
 
         let boundary =
-            sdfs
+            forms
             |> Seq.map (fun x -> x.Boundary)
             |> SdfBoundary.unionMany
 
@@ -117,25 +68,25 @@ let subtract (a:SdfForm) (b:SdfForm) =
         FastDistance = fastDistance
     }
 
-let intersect (sdfs:seq<SdfForm>) =
-    match sdfs |> Seq.toArray with
+let intersect (forms:seq<SdfForm>) =
+    match forms |> Seq.toArray with
     | [||] -> failwith "No SdfObjects given."
-    | [|sdf|] -> sdf
-    | sdfs ->
-        let boundary = sdfs |> Seq.map (fun x -> x.Boundary) |> SdfBoundary.intersectionMany
+    | [|form|] -> form
+    | forms ->
+        let boundary = forms |> Seq.map (fun x -> x.Boundary) |> SdfBoundary.intersectionMany
 
         let distance (position) =
             let mutable max = Single.NegativeInfinity
-            for i = 0 to sdfs.Length - 1 do
-                let obj = sdfs.[i]
+            for i = 0 to forms.Length - 1 do
+                let obj = forms.[i]
                 if max < SdfBoundary.getMaxDistance obj.Boundary position then
                     max <- obj.Distance position |> MathF.max max
             max
 
         let fastDistance (query) =
             let mutable max = Single.NegativeInfinity
-            for i = 0 to sdfs.Length - 1 do
-                let obj = sdfs.[i]
+            for i = 0 to forms.Length - 1 do
+                let obj = forms.[i]
                 if max < SdfBoundary.getMaxDistance obj.Boundary query.Position then
                     max <- obj.FastDistance query |> MathF.max max
             max
@@ -146,57 +97,8 @@ let intersect (sdfs:seq<SdfForm>) =
             FastDistance = SdfBoundary.createFastDistanceQuery2 fastDistance boundary
         }
 
-let unionTree (sdfs:seq<SdfForm>) =
-    match sdfs |> Seq.toList with
-    | [] -> failwith "No SdfObjects given."
-    | [sdf] -> sdf
-    | sdfs ->
-        // combine objects in an octree like fashion
-
-        let boxMin, boxSize =
-            let min = sdfs |> Seq.map (fun x -> x.Boundary.Center - Vector3(x.Boundary.Radius)) |> Seq.reduce Vector3.min
-            let max = sdfs |> Seq.map (fun x -> x.Boundary.Center + Vector3(x.Boundary.Radius)) |> Seq.reduce Vector3.max
-            let size = max - min |> Vector3.maxDimension
-
-            let center = Vector3.Lerp(min, max, 0.5f)
-
-            center - Vector3(size * 0.5f),  size
-
-        let toInt (x:float32) = x / boxSize * float32 Int32.MaxValue |> MathF.round |> uint
-
-        let rec loop (mask:uint) (sdfs:list<SdfForm>) =
-            match sdfs with
-            | [] -> failwith "unreachable"
-            | [sdf] -> sdf
-            | sdfs ->
-                // fallback, due to possible floating point inprecision
-                if mask = UInt32.MaxValue then union sdfs else
-
-                let small, big = sdfs |> List.partition (fun o -> toInt o.Boundary.Radius <= mask)
-
-                let unioned =
-                    small
-                    |> List.groupBy (fun x ->
-                        let p = x.Boundary.Center - boxMin
-                        let mask = ~~~mask
-                        struct (toInt p.X &&& mask, toInt p.Y &&& mask, toInt p.Z &&& mask)
-                    )
-                    |> List.map (fun (_, sdfs) -> union sdfs)
-
-                loop ((mask <<< 1) + 1u) (unioned @ big)
-
-        let mask =
-            sdfs
-            |> Seq.map (fun x -> x.Boundary.Radius)
-            |> Seq.min
-            |> toInt
-            |> Bits.toPowerOf2Minus1
-            |> max 1u
-
-        loop mask sdfs
-
-let unionSmooth (strength:float32) (sdfs:seq<SdfForm>) =
-    match sdfs |> Seq.toArray with
+let unionSmooth (strength:float32) (forms:seq<SdfForm>) =
+    match forms |> Seq.toArray with
     | [||] -> failwithf "blub"
     | [|sdf|] -> sdf
     | sdfs ->
@@ -224,8 +126,8 @@ let rec tryTrace (sdf:SdfForm) (ray:Ray) : voption<Ray> =
     if ray.Length <= 0f then
         ValueNone
     else
-        let length = ray |> Ray.toFastDistanceQuery |> sdf.FastDistance
-        //let length = ray.Origin |> sdf.Distance
+        //let length = ray |> Ray.toFastDistanceQuery |> sdf.FastDistance
+        let length = ray.Origin |> sdf.Distance
         if length < ray.Epsilon then
             ValueSome ray
         else

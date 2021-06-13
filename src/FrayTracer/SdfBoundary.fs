@@ -243,3 +243,46 @@ module Sphere =
 //let inline traceTest (boundary : SdfBoundary) (ray : Ray) = traceTest boundary ray
 //let inline trace (boundary : SdfBoundary) (ray : Ray) = trace boundary ray
 
+let buildSpatialLookup (getBoundary:'T -> SdfBoundary) (items:'T[]) : Vector3 -> 'T[]=
+    // very simple spatial distribution. can take some time to initialize :(
+    let boundaries = items |> Seq.map (fun x -> getBoundary x)
+
+    let aabbMin = boundaries |> Seq.map AABB.getMin |> Seq.reduce Vector3.min
+    let aabbMax = boundaries |> Seq.map AABB.getMax |> Seq.reduce Vector3.max
+    let countSize = 1.5f * (boundaries |> Seq.map (fun x -> x.Radius) |> Seq.average)
+
+    let aabbSize = aabbMax - aabbMin
+
+    let countX = aabbSize.X / countSize |> MathF.ceiling_i |> max 1
+    let countY = aabbSize.X / countSize |> MathF.ceiling_i |> max 1
+    let countZ = aabbSize.X / countSize |> MathF.ceiling_i |> max 1
+    let cellSize = aabbSize / Vector3(float32 countX, float32 countY, float32 countZ)
+    let cellSizeInv = Vector3(1f) / cellSize
+
+    let cells = Array3D.Parallel.init countX countY countZ (fun x y z ->
+        let center = aabbMin + cellSize * 0.5f + cellSize * Vector3(float32 x, float32 y, float32 z)
+
+        let upperBound =
+            (boundaries
+            |> Seq.map (fun x -> getMaxDistance x center)
+            |> Seq.min)
+            + (cellSize * 0.5f).Length()
+
+        let items' =
+            items
+            |> Array.where (fun x -> getMinDistance (getBoundary x) center < upperBound)
+
+        // make checking nearest SDF first most likely
+        items'
+        |> Array.sortInPlaceBy (fun x -> getMinDistance (getBoundary x) center)
+
+        items'
+    )
+
+    fun (position) ->
+    let c = (position - aabbMin) * cellSizeInv
+    cells.[
+        MathF.floor_i c.X |> MathI.clamp 0 (countX - 1),
+        MathF.floor_i c.Y |> MathI.clamp 0 (countY - 1),
+        MathF.floor_i c.Z |> MathI.clamp 0 (countZ - 1)
+    ]
