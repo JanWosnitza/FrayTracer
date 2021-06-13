@@ -17,6 +17,12 @@ module Bits =
     //let toPowerOf2 (x:int) = toPowerOf2Minus1 (x - 1) + 1
 
 [<RequireQualifiedAccess>]
+module MathI =
+    let inline min (min:int) (x:int) = Math.Min(min, x)
+    let inline max (max:int) (x:int) = Math.Max(max, x)
+    let inline clamp (min:int) (max:int) (x:int) = Math.Max(min, Math.Min(max, x))
+
+[<RequireQualifiedAccess>]
 module MathF =
     let pi = MathF.PI
     let pi2 = MathF.PI * 2.0f

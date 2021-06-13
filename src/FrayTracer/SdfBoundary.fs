@@ -101,6 +101,9 @@ let getMinDistance (x:SdfBoundary) (position:Vector3) = Vector3.Distance(x.Cente
 let getMaxDistance (x:SdfBoundary) (position:Vector3) = Vector3.Distance(x.Center, position) + x.Radius
 
 module AABB =
+    let getMin (boundary:SdfBoundary) = boundary.Center - Vector3(boundary.Radius)
+    let getMax (boundary:SdfBoundary) = boundary.Center + Vector3(boundary.Radius)
+
     let trace (boundary : SdfBoundary) (ray : Ray) =
         let irdir = Vector3.One / ray.Direction
         let diff = boundary.Center - ray.Origin

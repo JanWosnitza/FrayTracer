@@ -87,7 +87,7 @@ let timer = Stopwatch.StartNew()
 let traced =
     scene
     |> SdfScene.trace
-    |> Image.render epsilon 1000f imageSize camera
+    |> Image.render epsilon 30f imageSize camera
 timer.Stop()
 
 printfn $"Time = {timer.Elapsed.TotalSeconds:F1} sec"

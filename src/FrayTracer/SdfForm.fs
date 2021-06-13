@@ -16,18 +16,62 @@ let union (sdfs:seq<SdfForm>) =
     | [||] -> failwith "No SdfObjects given."
     | [|sdf|] -> sdf
     | sdfs ->
-        let boundary =
+        // very simple spatial distribution. can take some time to initialize :(
+        let aabbMin =
             sdfs
-            |> Seq.map (fun x -> x.Boundary)
-            |> SdfBoundary.unionMany
+            |> Seq.map (fun x -> x.Boundary |> SdfBoundary.AABB.getMin)
+            |> Seq.reduce Vector3.min
 
-        sdfs
-        |> Array.sortInPlaceBy (fun sdf -> SdfBoundary.getMinDistance sdf.Boundary boundary.Center)
+        let aabbMax =
+            sdfs
+            |> Seq.map (fun x -> x.Boundary |> SdfBoundary.AABB.getMax)
+            |> Seq.reduce Vector3.max
+
+        let countSize =
+            let radius = sdfs |> Seq.map (fun x -> x.Boundary.Radius) |> Seq.average
+            radius * 1.5f
+
+        let aabbSize = aabbMax - aabbMin
+
+        let countX = aabbSize.X / countSize |> MathF.ceiling_i |> max 1
+        let countY = aabbSize.X / countSize |> MathF.ceiling_i |> max 1
+        let countZ = aabbSize.X / countSize |> MathF.ceiling_i |> max 1
+        let cellSize = aabbSize / Vector3(float32 countX, float32 countY, float32 countZ)
+        let cellSizeInv = Vector3(1f) / cellSize
+
+        let cells = Array3D.Parallel.init countX countY countZ (fun x y z ->
+            let center = aabbMin + cellSize * 0.5f + cellSize * Vector3(float32 x, float32 y, float32 z)
+
+            let upperBound =
+                (sdfs
+                |> Seq.map (fun x -> SdfBoundary.getMaxDistance x.Boundary center)
+                |> Seq.min)
+                + (cellSize * 0.5f).Length()
+
+            let sdfs =
+                sdfs
+                |> Array.where (fun x -> SdfBoundary.getMinDistance x.Boundary center < upperBound)
+
+            // make checking nearest SDF first most likely
+            sdfs
+            |> Array.sortInPlaceBy (fun x -> SdfBoundary.getMinDistance x.Boundary center)
+
+            sdfs
+        )
+
+        let inline getCell (position) =
+            let c = (position - aabbMin) * cellSizeInv
+            cells.[
+                MathF.floor_i c.X |> MathI.clamp 0 (countX - 1),
+                MathF.floor_i c.Y |> MathI.clamp 0 (countY - 1),
+                MathF.floor_i c.Z |> MathI.clamp 0 (countZ - 1)
+            ]
 
         let distance =
             fun (position) ->
-            let mutable min = Single.PositiveInfinity
+            let sdfs = getCell position
 
+            let mutable min = Single.PositiveInfinity
             for i = 0 to sdfs.Length - 1 do
                 let sdf = sdfs.[i]
                 if min > SdfBoundary.getMinDistance sdf.Boundary position then
@@ -36,12 +80,19 @@ let union (sdfs:seq<SdfForm>) =
 
         let fastDistance =
             fun (query:SdfFastDistanceQuery) ->
+            let sdfs = getCell query.Position
+
             let mutable min = Single.PositiveInfinity
             for i = 0 to sdfs.Length - 1 do
                 let sdf = sdfs.[i]
                 if min > SdfBoundary.getMinDistance sdf.Boundary query.Position then
                     min <- sdf.FastDistance query |> MathF.min min
             min
+
+        let boundary =
+            sdfs
+            |> Seq.map (fun x -> x.Boundary)
+            |> SdfBoundary.unionMany
 
         {
             Distance = distance

@@ -33,6 +33,7 @@ type SdfFastDistanceQuery =
         Threshold : float32
     }
 
+[<Struct>]
 type SdfForm =
     {
         Distance : Vector3 -> float32
