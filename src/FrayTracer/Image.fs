@@ -34,31 +34,45 @@ module Image =
             trace ray
         )
 
-    let normalize (image:FColor[,]) =
+    let toColors (gamma:float32) (rng:System.Random) (image:FColor[,]) =
+        let gammaInv = 1.0f / gamma
+
         let max =
             image
-            |> Array2D.toSeq
-            |> Seq.map (FColor.getMaxColor)
-            |> Seq.max
+            |> Array2D.Parallel.maxWith FColor.getMaxColor
+            |> MathF.max 0.01f
 
         image
-        |> Array2D.map (fun x -> x / max)
+        |> Array2D.Parallel.map (fun fcolor ->
+            fcolor / max
+            |> FColor.gammaInverse gammaInv
+            |> FColor.toColor rng
+        )
 
-    let gamma (gamma:float32) (image:FColor[,]) =
-        let gammaInv = 1.0f / gamma
-        image
-        |> Array2D.map (FColor.gammaInverse gammaInv)
-
-    let toColors (rng:System.Random) (image:FColor[,]) =
-        image
-        |> Array2D.map (FColor.toColor rng)
+    [<Struct>]
+    [<StructLayout(LayoutKind.Sequential)>]
+    type BitmapColor =
+        {
+            mutable B : byte
+            mutable G : byte
+            mutable R : byte
+        }
 
     let saveBitmap (path:string) (image:Color[,]) =
+        let length1 = image.GetLength(0)
+        let length2 = image.GetLength(1)
+
         let buffer =
-            image
-            |> Array2D.toSeq
-            |> Seq.collect (fun color -> [|color.B; color.G; color.R|])
-            |> Seq.toArray
+            Array.Parallel.init (length1*length2) (fun index ->
+                let x = index % length1
+                let y = length2 - 1 - index / length1
+                let color = image.[x,y]
+                {B = color.B; G = color.G; R = color.R}
+            )
+            |> Array.rev
+            //|> Seq.collect (fun color -> [|color.B; color.G; color.R|])
+            //|> Seq.toArray
+            //Array.rev
 
         use bm =
             let scan0 = GCHandle.Alloc(buffer, GCHandleType.Pinned)

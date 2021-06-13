@@ -16,8 +16,8 @@ let ofArrayArray (array:_[][]) =
 
 let toSeq (array:_[,]) =
     seq {
-    for y = 0 to array.GetLength(1) - 1 do
-        for x = 0 to array.GetLength(0) - 1 do
+    for x = 0 to array.GetLength(0) - 1 do
+        for y = 0 to array.GetLength(1) - 1 do
             yield array.[x, y]
     }
 
@@ -36,3 +36,15 @@ module Parallel =
             )
 
         Array2D.init length1 length2 (fun x y -> arrayArray.[x].[y])
+
+    let map (mapper) (array:_[,]) =
+        init (array.GetLength(0)) (array.GetLength(1)) (fun x y -> mapper array.[x,y])
+
+    let maxWith (mapper) (array:_[,]) =
+        let yIndeices = seq { 0 .. array.GetLength(1) - 1 }
+        Array.Parallel.init (array.GetLength(0)) (fun x ->
+            yIndeices
+            |> Seq.map (fun y -> mapper array.[x,y])
+            |> Seq.max
+        )
+        |> Array.max

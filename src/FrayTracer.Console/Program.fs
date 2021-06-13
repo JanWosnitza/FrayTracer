@@ -93,9 +93,7 @@ timer.Stop()
 printfn $"Time = {timer.Elapsed.TotalSeconds:F1} sec"
 
 traced
-|> Image.normalize
-|> Image.gamma 2.2f
-|> Image.toColors rng
+|> Image.toColors 2.2f rng
 |> Image.saveBitmap "test"
 |> shellOpen
 |> ignore
