@@ -58,9 +58,9 @@ let randomTriangle () =
     let v1 = rng.pointInBall 4.0f
     SdfForm.Primitive.triangle {
         v1 = v1
-        v2 = v1 + rng.pointOnSphere (rng.range 0.5f 2.0f)
-        v3 = v1 + rng.pointOnSphere (rng.range 0.5f 2.0f)
-        Radius = rng.range 0.1f 0.5f
+        v2 = v1 + rng.pointOnSphere (rng.range 0.2f 0.6f)
+        v3 = v1 + rng.pointOnSphere (rng.range 0.2f 0.6f)
+        Radius = rng.range 0.1f 0.3f
     }
     |> SdfObject.create (randomMaterial ())
 
