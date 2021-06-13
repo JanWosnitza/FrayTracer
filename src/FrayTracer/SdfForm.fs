@@ -22,11 +22,15 @@ let union (forms:seq<SdfForm>) =
                 fun (position) ->
                 let forms = getForms position
 
+                let distanceToCenter = position |> Vector3.distance forms.Center
                 let mutable min = Single.PositiveInfinity
-                for i = 0 to forms.Length - 1 do
-                    let sdf = forms.[i]
-                    if min > SdfBoundary.getMinDistance sdf.Boundary position then
-                        min <- sdf.Distance(position) |> MathF.min min
+                for i = 0 to forms.Items.Length - 1 do
+                    let mutable sdf = &forms.Items.[i]
+                    if
+                        min > sdf.LowerBound - distanceToCenter
+                        && min > SdfBoundary.getMinDistance sdf.Item.Boundary position
+                    then
+                        min <- sdf.Item.Distance(position) |> MathF.min min
                 min
 
             Boundary =

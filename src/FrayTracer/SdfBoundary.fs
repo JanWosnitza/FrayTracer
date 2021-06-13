@@ -205,7 +205,24 @@ module Sphere =
 //let inline traceTest (boundary : SdfBoundary) (ray : Ray) = traceTest boundary ray
 //let inline trace (boundary : SdfBoundary) (ray : Ray) = trace boundary ray
 
-let buildSpatialLookup (getBoundary:'T -> SdfBoundary) (items:'T[]) : Vector3 -> 'T[]=
+type IHaveSdfBoundary =
+    abstract Boundary : SdfBoundary
+
+[<Struct>]
+type SpatialLookupItem<'T> =
+    {
+        LowerBound : float32
+        Item : 'T
+    }
+
+//[<Struct>]
+type SpatialLookup<'T> =
+    {
+        Center : Vector3
+        Items : SpatialLookupItem<'T>[]
+    }
+
+let buildSpatialLookup (getBoundary:'T -> SdfBoundary) (items:'T[]) : Vector3 -> SpatialLookup<'T> =
     // very simple spatial distribution. can take some time to initialize :(
     let boundaries = items |> Seq.map (fun x -> getBoundary x)
 
@@ -221,6 +238,8 @@ let buildSpatialLookup (getBoundary:'T -> SdfBoundary) (items:'T[]) : Vector3 ->
     let cellSize = aabbSize / Vector3(float32 countX, float32 countY, float32 countZ)
     let cellSizeInv = Vector3(1f) / cellSize
 
+    let diagonal = cellSize.Length()
+
     let cells = Array3D.Parallel.init countX countY countZ (fun x y z ->
         let center = aabbMin + cellSize * 0.5f + cellSize * Vector3(float32 x, float32 y, float32 z)
 
@@ -232,13 +251,25 @@ let buildSpatialLookup (getBoundary:'T -> SdfBoundary) (items:'T[]) : Vector3 ->
 
         let items' =
             items
-            |> Array.where (fun x -> getMinDistance (getBoundary x) center < upperBound)
+            |> Array.choose (fun x ->
+                let minDistance = getMinDistance (getBoundary x) center
+                if minDistance < upperBound then
+                    Some {
+                        LowerBound = minDistance //- diagonal
+                        Item = x
+                    }
+                else
+                    None
+            )
 
         // make checking nearest SDF first most likely
         items'
-        |> Array.sortInPlaceBy (fun x -> getMinDistance (getBoundary x) center)
+        |> Array.sortInPlaceBy (fun x -> x.LowerBound)
 
-        items'
+        {
+            Center = center
+            Items = items'
+        }
     )
 
     fun (position) ->

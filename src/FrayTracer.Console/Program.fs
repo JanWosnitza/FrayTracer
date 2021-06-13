@@ -90,7 +90,7 @@ let traced =
     |> Image.render epsilon 30f imageSize camera
 timer.Stop()
 
-printfn $"Time = {timer.Elapsed.TotalSeconds:F1} sec"
+printfn $"Time = {timer.Elapsed.TotalSeconds:F2} sec"
 
 traced
 |> Image.toColors 2.2f rng

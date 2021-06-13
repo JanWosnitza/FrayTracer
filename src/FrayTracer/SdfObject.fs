@@ -26,18 +26,24 @@ let union (objects:seq<SdfObject>) =
                         let getObjects = objects |> SdfBoundary.buildSpatialLookup (fun x -> x.Form.Boundary)
                         fun (position) ->
                         let objects = getObjects position
-                        let mutable minSdf = objects.[0]
-                        let mutable min = minSdf.Form.Distance position
+                        let mutable material = objects.Items.[0].Item.Material
+                        let mutable min = objects.Items.[0].Item.Form.Distance position
 
-                        for i = 1 to objects.Length - 1 do
-                            let sdf = objects.[i]
-                            if min > SdfBoundary.getMinDistance sdf.Form.Boundary position then
-                                let distance = sdf.Form.Distance position
+                        let distanceToCenter = position |> Vector3.distance objects.Center
+
+                        for i = 0 to objects.Items.Length - 1 do
+                            let mutable sdf = &objects.Items.[i]
+                            if
+                                min > sdf.LowerBound - distanceToCenter
+                                && min > SdfBoundary.getMinDistance sdf.Item.Form.Boundary position
+                            then
+                                let distance = sdf.Item.Form.Distance position
                                 if distance < min then
                                     min <- distance
-                                    minSdf <- sdf
+                                    material <- sdf.Item.Material
+
                         position
-                        |> SdfMaterial.getColor minSdf.Material
+                        |> SdfMaterial.getColor material
                 }
         }
 
