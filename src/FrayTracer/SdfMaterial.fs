@@ -3,8 +3,8 @@ module FrayTracer.SdfMaterial
 
 let createSolid (color) : SdfMaterial =
     {
-        Color = fun _ -> color
+        Color = fun _ _ -> color
     }
 
-let inline getColor (material:SdfMaterial) (position) =
-    material.Color position
+let inline getColor (position) (normal) (material:SdfMaterial) : FColor =
+    material.Color position normal

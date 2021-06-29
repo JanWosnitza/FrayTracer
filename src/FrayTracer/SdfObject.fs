@@ -24,7 +24,7 @@ let union (objects:seq<SdfObject>) =
                 {
                     Color =
                         let getObjects = objects |> SdfBoundary.buildSpatialLookup (fun x -> x.Form.Boundary)
-                        fun (position) ->
+                        fun position normal ->
                         let objects = getObjects position
                         let mutable material = objects.Items.[0].Item.Material
                         let mutable min = objects.Items.[0].Item.Form.Distance position
@@ -42,8 +42,8 @@ let union (objects:seq<SdfObject>) =
                                     min <- distance
                                     material <- sdf.Item.Material
 
-                        position
-                        |> SdfMaterial.getColor material
+                        material
+                        |> SdfMaterial.getColor position normal
                 }
         }
 
@@ -67,12 +67,12 @@ let tryTrace (object:SdfObject) (ray:Ray) : voption<SdfObjectTraceResult> =
     match  SdfForm.tryTrace object.Form ray with
     | ValueNone -> ValueNone
     | ValueSome result ->
-        let position = result.Ray.Origin
-        let normal = SdfForm.normal object.Form (ray.Epsilon * 0.125f) (position, result.Distance)
+        let normal = SdfForm.normalFromRay object.Form result.Ray
+
         ValueSome {
             Ray = result.Ray
             Normal = normal
             Color = 
-                position //- normal * ray.Epsilon
-                |> SdfMaterial.getColor object.Material
+                object.Material
+                |> SdfMaterial.getColor result.Ray.Origin normal
         }

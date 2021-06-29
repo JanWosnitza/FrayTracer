@@ -2,12 +2,16 @@
 
 open System.Numerics
 
+type Position = Vector3
+type Direction = Vector3
+type Normal = Vector3
+
 [<Struct>]
 type Ray =
     {
-        Origin : Vector3
+        Origin : Position
         /// <summary>Normalized direction of the ray.</summary>
-        Direction : Vector3
+        Direction : Direction
         Length : float32
         Epsilon : float32
     }
@@ -15,7 +19,7 @@ type Ray =
 [<Struct>]
 type SdfBoundary =
     {
-        Center : Vector3
+        Center : Position
         Radius : float32
     }
 
@@ -32,16 +36,16 @@ type SdfFormTraceResult =
         Distance : float32
     }
 
-[<Struct>]
+//[<Struct>]
 type SdfForm =
     {
-        Distance : Vector3 -> float32
+        Distance : Position -> float32
         Boundary : SdfBoundary
     }
 
 type SdfMaterial =
     {
-        Color : Vector3 -> FColor
+        Color : Position -> Normal -> FColor
     }
 
 type SdfObject =
@@ -54,7 +58,7 @@ type SdfObject =
 type SdfObjectTraceResult =
     {
         Ray : Ray
-        Normal : Vector3
+        Normal : Normal
         Color : FColor
     }
 
@@ -64,5 +68,6 @@ type SdfScene =
     {
         Object : SdfObject
         BackgroundColor : FColor
-        LightDirection : Vector3
+        LightDirection : Direction
+        LightColor : FColor
     }

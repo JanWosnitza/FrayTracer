@@ -75,8 +75,9 @@ let scene =
                     [SdfForm.Primitive.sphere {Center = Vector3(0f,0f,0f); Radius = 3.5f}]
                 )
                 (SdfForm.Primitive.sphere {Center = Vector3(-0.5f,1f,-2f); Radius = 2.5f})
+        BackgroundColor = FColor.ofRGB 0.1f 0.1f 0.1f
         LightDirection = (-0.5f, -1f, 1f) |> Vector3 |> Vector3.normalize
-        BackgroundColor = FColor.ofRGB 0f 0f 0f
+        LightColor = FColor.ofRGB 1f 1f 1f * MathF.pi
     }
 
 let epsilon = 0.01f

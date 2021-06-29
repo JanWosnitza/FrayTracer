@@ -16,21 +16,21 @@ let union (forms:seq<SdfForm>) =
     | [||] -> failwith "No SdfObjects given."
     | [|form|] -> form
     | forms ->
+        let getForms = forms |> SdfBoundary.buildSpatialLookup (fun x -> x.Boundary)
         {
             Distance =
-                let getForms = forms |> SdfBoundary.buildSpatialLookup (fun x -> x.Boundary)
                 fun (position) ->
                 let forms = getForms position
 
                 let distanceToCenter = position |> Vector3.distance forms.Center
-                let mutable min = Single.PositiveInfinity
-                for i = 0 to forms.Items.Length - 1 do
+                let mutable min = forms.Items.[0].Item.Distance position
+                for i = 1 to forms.Items.Length - 1 do
                     let mutable sdf = &forms.Items.[i]
                     if
                         min > sdf.LowerBound - distanceToCenter
                         && min > SdfBoundary.getMinDistance sdf.Item.Boundary position
                     then
-                        min <- sdf.Item.Distance(position) |> MathF.min min
+                        min <- sdf.Item.Distance position |> MathF.min min
                 min
 
             Boundary =
@@ -56,12 +56,13 @@ let intersect (forms:seq<SdfForm>) =
         {
             Distance =
                 fun position ->
-                let mutable max = Single.NegativeInfinity
-                for i = 0 to forms.Length - 1 do
+                let mutable max = forms.[0].Distance position
+                for i = 1 to forms.Length - 1 do
                     let obj = forms.[i]
                     if max < SdfBoundary.getMaxDistance obj.Boundary position then
                         max <- obj.Distance position |> MathF.max max
                 max
+
             Boundary = forms |> Seq.map (fun x -> x.Boundary) |> SdfBoundary.intersectionMany
         }
 
@@ -70,16 +71,18 @@ let unionSmooth (strength:float32) (forms:seq<SdfForm>) =
     | [||] -> failwithf "blub"
     | [|sdf|] -> sdf
     | sdfs ->
-        {
-            Distance =
-                let strengthInverse = -1f / strength
-                fun position ->
-                let mutable sum = 0f
-                for i = 0 to sdfs.Length - 1 do
-                    let distance = sdfs.[i].Distance position
-                    sum <- sum + MathF.Exp(strengthInverse * distance)
+        let distance =
+            let strengthInverse = -1f / strength
+            fun position ->
+            let mutable sum = 0f
+            for i = 0 to sdfs.Length - 1 do
+                let distance = sdfs.[i].Distance position
+                sum <- sum + MathF.Exp(strengthInverse * distance)
 
-                -MathF.Log(sum) * strength
+            -MathF.Log(sum) * strength
+
+        {
+            Distance = distance
 
             Boundary =
                 sdfs
@@ -100,28 +103,22 @@ let rec tryTrace (sdf:SdfForm) (ray:Ray) : voption<SdfFormTraceResult> =
         else
             tryTrace sdf (ray |> Ray.move distance)
 
-let normal (sdf:SdfForm) (epsilon:float32) (position:Vector3, distance:float32) =
-    (*let inline f (dimension:Vector3) =
-        let epsilon = dimension * epsilon
-        sdf.Distance (position + epsilon) - sdf.Distance (position - epsilon)
-
-    Vector3(f Vector3.UnitX, f Vector3.UnitY, f Vector3.UnitZ)
-    |> Vector3.normalize*)
-
-    //let distance = sdf.Distance position
-
+let normal (sdf:SdfForm) (epsilon:float32) (position:Position) =
     (Vector3(
         sdf.Distance (Vector3(position.X + epsilon, position.Y, position.Z)),
         sdf.Distance (Vector3(position.X, position.Y + epsilon, position.Z)),
         sdf.Distance (Vector3(position.X, position.Y, position.Z + epsilon))
-     ) - Vector3(distance))
+     ) - Vector3(sdf.Distance position))
     |> Vector3.normalize
+
+let inline normalFromRay (sdf:SdfForm) (ray:Ray) =
+    normal sdf (ray.Epsilon * 0.125f) (ray |> Ray.get (-ray.Epsilon))
 
 module Primitive =
     [<Struct>]
     type Sphere =
         {
-            Center : Vector3
+            Center : Position
             Radius : float32
         }
 
@@ -140,20 +137,21 @@ module Primitive =
     [<Struct>]
     type Capsule =
         {
-            From : Vector3
-            To : Vector3
+            From : Position
+            To : Position
             Radius : float32
         }
 
     let capsule (data:Capsule) =
         {
             Distance =
-                let dir = (data.To - data.From) |> Vector3.normalize
+                let dir = data.To - data.From
+                let dirInv = Vector3.inverseLength dir
 
                 fun position ->
                 let distance =
                     let diff = position - data.From
-                    let t = Vector3.Dot(diff, dir)
+                    let t = Vector3.Dot(diff, dirInv)
                     if t <= 0f then
                         diff.Length()
                     elif t >= 1f then
@@ -174,8 +172,8 @@ module Primitive =
     [<Struct>]
     type Torus =
         {
-            Center : Vector3
-            Normal : Vector3
+            Center : Position
+            Normal : Normal
             MajorRadius : float32
             MinorRadius : float32
         }
@@ -186,15 +184,17 @@ module Primitive =
                 Normal = data.Normal |> Vector3.normalize
             }
 
-        {
-            Distance =
-                let planeD = -(Vector3.dot data.Center data.Normal)
-                fun position ->
-                let distanceToPlane = Vector3.Dot(position, data.Normal) + planeD
-                let distanceToCenter = Vector3.Distance(data.Center, position - (distanceToPlane * data.Normal))
-                let distanceToCircle = distanceToCenter - data.MajorRadius
+        let distance =
+            let planeD = -(Vector3.dot data.Center data.Normal)
+            fun position ->
+            let distanceToPlane = Vector3.Dot(position, data.Normal) + planeD
+            let distanceToCenter = Vector3.Distance(data.Center, position - (distanceToPlane * data.Normal))
+            let distanceToCircle = distanceToCenter - data.MajorRadius
 
-                Vector2(distanceToPlane, distanceToCircle).Length() - data.MinorRadius
+            Vector2(distanceToPlane, distanceToCircle).Length() - data.MinorRadius
+
+        {
+            Distance = distance
 
             Boundary = {
                 Center = data.Center
@@ -205,9 +205,9 @@ module Primitive =
     [<Struct>]
     type Triangle =
         {
-            v1 : Vector3
-            v2 : Vector3
-            v3 : Vector3
+            v1 : Position
+            v2 : Position
+            v3 : Position
             Radius : float32
         }
 

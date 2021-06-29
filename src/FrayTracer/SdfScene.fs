@@ -10,9 +10,9 @@ let trace (scene:SdfScene) =
     | ValueNone -> scene.BackgroundColor
     | ValueSome result ->
         let light =
-            let dot = Vector3.dot result.Normal scene.LightDirection
+            let lightCos = -Vector3.dot result.Normal scene.LightDirection
 
-            if dot >= 0f then
+            if lightCos <= 0f then
                 0f
             else
                 // shadow
@@ -24,7 +24,7 @@ let trace (scene:SdfScene) =
                 }
                 |> SdfForm.tryTrace scene.Object.Form
                 |> function
-                    | ValueNone -> -dot
+                    | ValueNone -> lightCos * MathF.piInv
                     | ValueSome _ -> 0.0f
 
-        result.Color * (0.1f + light * 0.9f)
+        result.Color * (scene.BackgroundColor + scene.LightColor * light)

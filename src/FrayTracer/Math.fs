@@ -27,6 +27,8 @@ module MathF =
     let pi = MathF.PI
     let pi2 = MathF.PI * 2.0f
 
+    let piInv = 1f / pi
+
     let sqrt (x:float32) = sqrt x
 
     let [<Literal>] sqrt2 = 1.414213562f // sqrt 2.0f
