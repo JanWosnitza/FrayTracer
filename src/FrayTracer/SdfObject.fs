@@ -70,7 +70,7 @@ let tryTrace (object:SdfObject) (ray:Ray) : voption<SdfObjectTraceResult> =
         let normal = SdfForm.normalFromRay object.Form result.Ray
 
         ValueSome {
-            Ray = result.Ray
+            Ray = result.Ray |> Ray.move -ray.Epsilon
             Normal = normal
             Color = 
                 object.Material

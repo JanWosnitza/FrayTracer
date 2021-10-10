@@ -17,7 +17,7 @@ let trace (scene:SdfScene) =
             else
                 // shadow
                 {
-                    Origin = result.Position + result.Normal * ray.Epsilon
+                    Origin = result.Position
                     Epsilon = ray.Epsilon
                     Direction = -scene.LightDirection
                     Length = result.Ray.Length
