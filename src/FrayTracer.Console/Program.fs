@@ -11,7 +11,7 @@ let shellOpen (path) =
 // MAIN
 
 // 19 36 78 86
-let rng = System.Random(78) //86
+let rng = System.Random(19) //86
 
 let camera =
     Camera.lookAt {
@@ -76,8 +76,10 @@ let scene =
                 )
                 (SdfForm.Primitive.sphere {Center = Vector3(-0.5f,1f,-2f); Radius = 2.5f})
         BackgroundColor = FColor.ofRGB 0.1f 0.1f 0.1f
-        LightDirection = (-0.5f, -1f, 1f) |> Vector3 |> Vector3.normalize
-        LightColor = FColor.ofRGB 1f 1f 1f * MathF.pi
+        Lights = [
+            SdfLight.directional (Vector3(-0.5f, -1f, 1f)) (FColor.ofRGB 0.5f 0.5f 0.5f)
+            SdfLight.point (Vector3(-0.5f, 0f, -2f)) ((FColor.ofRGB 10f 0f 0f))
+        ]
     }
 
 let epsilon = 0.01f

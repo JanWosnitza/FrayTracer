@@ -1,19 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
   </PropertyGroup>
-
   <PropertyGroup>
     <Tailcalls>true</Tailcalls>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Update="FSharp.Core" Version="5.0.1" />
     <PackageReference Include="System.Drawing.Common" Version="5.0.2" />
     <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
   </ItemGroup>
-
   <ItemGroup>
     <Compile Include="Spline.fs" />
     <Compile Include="Light.fs" />
@@ -31,9 +27,9 @@
     <Compile Include="SdfForm.fs" />
     <Compile Include="SdfMaterial.fs" />
     <Compile Include="SdfObject.fs" />
+    <Compile Include="SdfLight.fs" />
     <Compile Include="SdfScene.fs" />
     <Compile Include="Camera.fs" />
     <Compile Include="Image.fs" />
   </ItemGroup>
-
 </Project>
