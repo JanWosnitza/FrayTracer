@@ -205,19 +205,19 @@ module Primitive =
     [<Struct>]
     type Triangle =
         {
-            v1 : Position
-            v2 : Position
-            v3 : Position
+            V1 : Position
+            V2 : Position
+            V3 : Position
             Radius : float32
         }
 
     let triangle (data:Triangle) =
         // optimized version of https://iquilezles.org/www/articles/triangledistance/triangledistance.htm
-        let v21 = data.v2 - data.v1
+        let v21 = data.V2 - data.V1
         let v21' = v21 |> Vector3.inverseLength
-        let v32 = data.v3 - data.v2
+        let v32 = data.V3 - data.V2
         let v32' = v32 |> Vector3.inverseLength
-        let v13 = data.v1 - data.v3
+        let v13 = data.V1 - data.V3
         let v13' = v13 |> Vector3.inverseLength
         let nor = Vector3.Cross(v21, v13) |> Vector3.normalize
         let n21 = Vector3.Cross(v21, nor) |> Vector3.normalize
@@ -225,9 +225,9 @@ module Primitive =
         let n13 = Vector3.Cross(v13, nor) |> Vector3.normalize
 
         let inline distance (position) =
-            let p1 = position - data.v1
-            let p2 = position - data.v2
-            let p3 = position - data.v3
+            let p1 = position - data.V1
+            let p2 = position - data.V2
+            let p3 = position - data.V3
 
             let distance =
                 // inside/outside test
@@ -252,11 +252,11 @@ module Primitive =
         let boundary :SdfBoundary =
             {
             Center =
-                let areaInv = 0.5f / Vector3.Cross(data.v1 - data.v2, data.v2 - data.v3).LengthSquared()
-                let w1 = (data.v2 - data.v3).LengthSquared() * Vector3.Dot(data.v1 - data.v2, data.v1 - data.v3) * areaInv
-                let w2 = (data.v1 - data.v3).LengthSquared() * Vector3.Dot(data.v2 - data.v1, data.v2 - data.v3) * areaInv
+                let areaInv = 0.5f / Vector3.Cross(data.V1 - data.V2, data.V2 - data.V3).LengthSquared()
+                let w1 = (data.V2 - data.V3).LengthSquared() * Vector3.Dot(data.V1 - data.V2, data.V1 - data.V3) * areaInv
+                let w2 = (data.V1 - data.V3).LengthSquared() * Vector3.Dot(data.V2 - data.V1, data.V2 - data.V3) * areaInv
                 let w3 = 1f - w1 - w2 // (data.v1 - data.v2).LengthSquared() * Vector3.Dot(data.v3 - data.v1, data.v3 - data.v2) * areaInv
-                w1 * data.v1 + w2 * data.v2 + w3 * data.v3
+                w1 * data.V1 + w2 * data.V2 + w3 * data.V3
             Radius =
                 v21.Length() * v32.Length() * v13.Length() / 2f / Vector3.Cross(v21,v32).Length()
                 + data.Radius

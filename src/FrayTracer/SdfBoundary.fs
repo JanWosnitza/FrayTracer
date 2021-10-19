@@ -228,7 +228,7 @@ let buildSpatialLookup (getBoundary:'T -> SdfBoundary) (items:'T[]) : Vector3 ->
 
     let aabbMin = boundaries |> Seq.map AABB.getMin |> Seq.reduce Vector3.min
     let aabbMax = boundaries |> Seq.map AABB.getMax |> Seq.reduce Vector3.max
-    let countSize = 1.5f * (boundaries |> Seq.map (fun x -> x.Radius) |> Seq.average)
+    let countSize = 1.5f * (boundaries |> Seq.averageBy (fun x -> x.Radius))
 
     let aabbSize = aabbMax - aabbMin
 

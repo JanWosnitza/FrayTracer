@@ -15,18 +15,13 @@ let trace (scene:SdfScene) =
             let lightCos = Vector3.dot result.Normal lightDirection
 
             if lightCos > 0f then
-                {
-                    Origin = result.Position
-                    Epsilon = ray.Epsilon
-                    Direction = lightDirection
-                    Length = result.Ray.Length
-                }
-                |> SdfForm.tryTrace scene.Object.Form
+                result.Ray
+                |> light.Intensity scene.Object
                 |> function
-                    | ValueNone ->
+                    | ValueSome intensity ->
                         // no shadow
-                        lightColor <- lightColor + (light.Color result.Position) * lightCos
-                    | ValueSome _ ->
+                        lightColor <- lightColor + intensity * lightCos
+                    | ValueNone ->
                         // shadow
                         ()
 

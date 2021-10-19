@@ -64,10 +64,11 @@ type SdfObjectTraceResult =
 
     member this.Position = this.Ray.Origin
 
+[<Struct>]
 type SdfLight =
     {
         Direction : Position -> Direction
-        Color : Position -> FColor
+        Intensity : SdfObject -> Ray -> FColor voption
     }
 
 type SdfScene =
