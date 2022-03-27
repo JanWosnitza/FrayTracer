@@ -97,6 +97,4 @@ printfn $"Time = {timer.Elapsed.TotalSeconds:F2} sec"
 
 traced
 |> Image.toColors 2.2f rng
-|> Image.saveBitmap "test"
-|> shellOpen
-|> ignore
+|> Image.saveBitmap "result.bmp"

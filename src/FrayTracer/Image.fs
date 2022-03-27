@@ -58,7 +58,7 @@ module Image =
             mutable R : byte
         }
 
-    let saveBitmap (path:string) (image:Color[,]) =
+    let toBitmap (image:Color[,]) =
         let length1 = image.GetLength(0)
         let length2 = image.GetLength(1)
 
@@ -74,17 +74,17 @@ module Image =
             //|> Seq.toArray
             //Array.rev
 
-        use bm =
-            let scan0 = GCHandle.Alloc(buffer, GCHandleType.Pinned)
-            try
-                new Bitmap(
-                    image.GetLength(0),
-                    image.GetLength(1),
-                    image.GetLength(0)*3,
-                    PixelFormat.Format24bppRgb,
-                    scan0.AddrOfPinnedObject()
-                )
-            finally scan0.Free()
-        let fullPath = Path.GetFullPath(path + ".bmp")
-        bm.Save(fullPath, ImageFormat.Bmp)
-        fullPath
+        let scan0 = GCHandle.Alloc(buffer, GCHandleType.Pinned)
+        try
+            new Bitmap(
+                image.GetLength(0),
+                image.GetLength(1),
+                image.GetLength(0)*3,
+                PixelFormat.Format24bppRgb,
+                scan0.AddrOfPinnedObject()
+            )
+        finally scan0.Free()
+
+    let saveBitmap (path:string) (image:Color[,]) =
+        use bm = toBitmap image
+        bm.Save(path, ImageFormat.Bmp)
