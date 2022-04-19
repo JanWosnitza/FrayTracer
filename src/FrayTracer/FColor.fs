@@ -42,9 +42,9 @@ module FColor =
 
     let toColor (rng:Random) (FColor color) : Color =
         Color.FromArgb(
-            color.X * 255f + rng.range_01 () |> MathF.floor_i,
-            color.Y * 255f + rng.range_01 () |> MathF.floor_i,
-            color.Z * 255f + rng.range_01 () |> MathF.floor_i
+            color.X * 254.5f + rng.range_01 () |> MathF.round_i |> min 255,
+            color.Y * 254.5f + rng.range_01 () |> MathF.round_i |> min 255,
+            color.Z * 254.5f + rng.range_01 () |> MathF.round_i |> min 255
         )
 
     let gammaInverse (gamma:float32) (FColor color) =
