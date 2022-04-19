@@ -224,11 +224,13 @@ type SpatialLookup<'T> =
 
 let buildSpatialLookup (getBoundary:'T -> SdfBoundary) (items:'T[]) : Vector3 -> SpatialLookup<'T> =
     // very simple spatial distribution. can take some time to initialize :(
-    let boundaries = items |> Seq.map (fun x -> getBoundary x)
+    let itemsAndBoundaries = items |> Seq.map (fun x -> x, getBoundary x) |> Seq.toArray
 
-    let aabbMin = boundaries |> Seq.map AABB.getMin |> Seq.reduce Vector3.min
-    let aabbMax = boundaries |> Seq.map AABB.getMax |> Seq.reduce Vector3.max
-    let countSize = 1.5f * (boundaries |> Seq.averageBy (fun x -> x.Radius))
+    let aabbMin = itemsAndBoundaries |> Seq.map snd |> Seq.map AABB.getMin |> Seq.reduce Vector3.min
+    let aabbMax = itemsAndBoundaries |> Seq.map snd |> Seq.map AABB.getMax |> Seq.reduce Vector3.max
+    let countSize =
+        let sum = itemsAndBoundaries |> Seq.map snd |> Seq.map (fun x -> x.Radius) |> Seq.reduce (+)
+        1.5f * (sum / float32 items.Length)
 
     let aabbSize = aabbMax - aabbMin
 
@@ -244,23 +246,22 @@ let buildSpatialLookup (getBoundary:'T -> SdfBoundary) (items:'T[]) : Vector3 ->
         let center = aabbMin + cellSize * 0.5f + cellSize * Vector3(float32 x, float32 y, float32 z)
 
         let upperBound =
-            (boundaries
+            (itemsAndBoundaries
+            |> Seq.map snd
             |> Seq.map (fun x -> getMaxDistance x center)
             |> Seq.min)
             + (cellSize * 0.5f).Length()
 
         let items' =
-            items
-            |> Array.choose (fun x ->
-                let minDistance = getMinDistance (getBoundary x) center
-                if minDistance < upperBound then
-                    Some {
-                        LowerBound = minDistance //- diagonal
-                        Item = x
-                    }
-                else
-                    None
-            )
+            itemsAndBoundaries
+            |> Seq.map (fun (x, boundary) -> struct (x, getMinDistance boundary center))
+            |> Seq.filter (fun (struct (_, minDistance)) -> minDistance < upperBound)
+            |> Seq.map (fun (struct (x, minDistance)) ->
+                {
+                    LowerBound = minDistance //- diagonal
+                    Item = x
+                })
+            |> Seq.toArray
 
         // make checking nearest SDF first most likely
         items'
